@@ -163,6 +163,21 @@ func SavePost(db *sql.DB, post Post) error {
 
 }
 
+func DeletePost(db *sql.DB, postID string) error {
+	log := logrus.New()
+
+	_, err := db.Exec(`
+	DELETE FROM posts WHERE id=?
+	`, postID)
+
+	if err != nil {
+		log.Errorf("Could not delete post: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func initDb(dbFile string) {
 	createSql := `
 	CREATE TABLE IF NOT EXISTS posts (

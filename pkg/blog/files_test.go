@@ -95,4 +95,7 @@ func TestMakePostSlug(t *testing.T) {
 	slug = makePostSlug(title)
 	assert.Equal(t, "this-is-1-test", slug)
 
+	title = "this is 1 test?"
+	slug = makePostSlug(title)
+	assert.Equal(t, "this-is-1-test", slug)
 }

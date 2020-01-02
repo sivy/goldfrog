@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -41,6 +42,25 @@ func (repo *PostsRepo) SavePostFile(post Post) error {
 	log.Debugf("Write file: %s", file)
 
 	err := ioutil.WriteFile(file, []byte(post.ToString()), 0777)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (repo *PostsRepo) DeletePostFile(post Post) error {
+	filename := fmt.Sprintf(
+		"%s-%s.md",
+		post.PostDate.Format("2006-01-02"),
+		post.Slug,
+	)
+
+	file := filepath.Join(repo.PostsDirectory, filename)
+	log.Debugf("Write file: %s", file)
+
+	err := os.Remove(file)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -171,5 +191,6 @@ func makePostSlug(title string) string {
 	re := regexp.MustCompile("[^[:alnum:]-]")
 	// leave only characters and dashes
 	s = string(re.ReplaceAll([]byte(s), []byte("")))
+	s = strings.TrimRight(s, "-")
 	return s
 }

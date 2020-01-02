@@ -197,20 +197,27 @@ func CreateEditPostFunc(
 			log.Errorf("Could not save post: %v", err)
 		}
 
-		// t, err := getTemplate(templatesDir, "base/redirect.html")
-		// if err != nil {
-		// 	log.Errorf("Could not get template: %v", err)
-		// }
-
-		// err = t.ExecuteTemplate(w, "redirect", struct {
-		// 	Config Config
-		// 	Url    string
-		// }{
-		// 	Config: config,
-		// 	Url:    "/",
-		// })
 		redirect(w, templatesDir, "/")
 		return
+	}
+}
+
+func CreateDeletePostFunc(
+	config Config, db *sql.DB, templatesDir string, repo PostsRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			redirect(w, templatesDir, "/")
+		}
+
+		postID := r.PostFormValue("postID")
+
+		err := DeletePost(db, postID)
+
+		if err != nil {
+			log.Errorf("Could not delete post: %v", err)
+		}
+
+		redirect(w, templatesDir, "/")
 	}
 }
 
