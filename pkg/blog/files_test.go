@@ -81,3 +81,18 @@ func TestPostSlug(t *testing.T) {
 	assert.NotNil(t, slug)
 	assert.Equal(t, "post-slug-test", slug)
 }
+
+func TestMakePostSlug(t *testing.T) {
+	title := "this is a test"
+	slug := makePostSlug(title)
+	assert.Equal(t, "this-is-a-test", slug)
+
+	title = "this isn't a test"
+	slug = makePostSlug(title)
+	assert.Equal(t, "this-isnt-a-test", slug)
+
+	title = "this is 1 test"
+	slug = makePostSlug(title)
+	assert.Equal(t, "this-is-1-test", slug)
+
+}

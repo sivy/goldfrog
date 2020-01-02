@@ -23,6 +23,10 @@ type Post struct {
 	Format   string    `json:"format"`
 }
 
+func (post *Post) TagString() string {
+	return strings.Join(post.Tags, ", ")
+}
+
 func (post *Post) ToString() string {
 	filecontent := fmt.Sprintf("title: %s\n", post.Title)
 	filecontent = filecontent + fmt.Sprintf("slug: %s\n", post.Slug)

@@ -34,7 +34,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 	var posts = make([]Post, 0)
 
 	rows, err := db.Query(`
-		SELECT slug, title, tags,
+		SELECT id, slug, title, tags,
 		postdate, body FROM posts
 		ORDER BY datetime(postdate) DESC
 		LIMIT 20`)
@@ -50,7 +50,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		var tags string
 		var dateStr string
 
-		err = rows.Scan(&p.Slug, &p.Title, &tags, &dateStr, &body)
+		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
 		if err != nil {
 			log.Error(err)
 		}
@@ -75,6 +75,49 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 	return posts
 }
 
+func GetPost(db *sql.DB, postID string) Post {
+	log := logrus.New()
+
+	var p Post
+
+	rows, err := db.Query(`
+		SELECT id, slug, title, tags,
+		postdate, body FROM posts
+		WHERE id = ?`, postID)
+
+	if err != nil {
+		log.Errorf("Could not load post %s: %v", postID, err)
+	}
+
+	for rows.Next() {
+		// fmt.Printf("%v", row)
+		var body string
+		var tags string
+		var dateStr string
+
+		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
+		if err != nil {
+			log.Error(err)
+		}
+		var date time.Time
+		var err error
+
+		date, err = dateparse.ParseAny(dateStr)
+
+		if err != nil {
+			log.Errorf("Cannot parse date from %s", dateStr)
+			p.PostDate = time.Now()
+		} else {
+			p.PostDate = date
+		}
+
+		p.Tags = strings.Split(tags, ", ")
+
+		p.Body = body
+	}
+	return p
+}
+
 func CreatePost(db *sql.DB, post Post) error {
 	log := logrus.New()
 
@@ -89,6 +132,27 @@ func CreatePost(db *sql.DB, post Post) error {
 	`, post.Slug, post.Title,
 		strings.Join(post.Tags, ","),
 		post.Body)
+
+	if err != nil {
+		log.Errorf("Could not save post: %v", err)
+		return err
+	}
+
+	return nil
+
+}
+
+func SavePost(db *sql.DB, post Post) error {
+	log := logrus.New()
+
+	_, err := db.Exec(`
+	UPDATE posts SET
+		title=?, tags=?, body=?
+	) WHERE id=?
+	`, post.Title,
+		strings.Join(post.Tags, ","),
+		post.Body,
+		post.ID)
 
 	if err != nil {
 		log.Errorf("Could not save post: %v", err)

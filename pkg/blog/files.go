@@ -165,12 +165,11 @@ func getPostSlugFromFile(filename string) string {
 }
 
 func makePostSlug(title string) string {
-	bits := strings.Split(title, "")
+	bits := strings.Split(title, " ")
 	s := strings.Join(bits, "-")
 	s = strings.ToLower(s)
-
-	re := regexp.MustCompile("[^a-zA-Z]")
+	re := regexp.MustCompile("[^[:alnum:]-]")
+	// leave only characters and dashes
 	s = string(re.ReplaceAll([]byte(s), []byte("")))
-
 	return s
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/gomarkdown/markdown"
 	"github.com/leekchan/gtf"
 )
@@ -36,6 +37,7 @@ func CreateIndexFunc(config Config, db *sql.DB, templatesDir string) http.Handle
 
 		err = t.ExecuteTemplate(w, "base", struct {
 			Posts      []Post
+			Post       Post
 			Config     Config
 			IsOwner    bool
 			FormAction string
@@ -44,6 +46,7 @@ func CreateIndexFunc(config Config, db *sql.DB, templatesDir string) http.Handle
 			ShowExpand bool
 		}{
 			Posts:      posts,
+			Post:       Post{},
 			Config:     config,
 			IsOwner:    isOwner,
 			FormAction: "/new",
@@ -74,6 +77,7 @@ func CreateNewPostFunc(
 
 			err = t.ExecuteTemplate(w, "base", struct {
 				Config     Config
+				Post       Post
 				FormAction string
 				IsOwner    bool
 				TextHeight int
@@ -81,6 +85,7 @@ func CreateNewPostFunc(
 				ShowExpand bool
 			}{
 				Config:     config,
+				Post:       Post{},
 				FormAction: "/new",
 				IsOwner:    true,
 				TextHeight: 20,
@@ -113,18 +118,98 @@ func CreateNewPostFunc(
 			log.Errorf("Could not save post: %v", err)
 		}
 
-		t, err := getTemplate(templatesDir, "base/redirect.html")
-		if err != nil {
-			log.Errorf("Could not get template: %v", err)
+		// t, err := getTemplate(templatesDir, "base/redirect.html")
+		// if err != nil {
+		// 	log.Errorf("Could not get template: %v", err)
+		// }
+
+		// err = t.ExecuteTemplate(w, "redirect", struct {
+		// 	Config Config
+		// 	Url    string
+		// }{
+		// 	Config: config,
+		// 	Url:    "/",
+		// })
+		redirect(w, templatesDir, "/")
+		return
+	}
+}
+
+func CreateEditPostFunc(
+	config Config, db *sql.DB, templatesDir string, repo PostsRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			if !checkIsOwner(config, r) {
+				http.Redirect(w, r, "/", http.StatusUnauthorized)
+			}
+
+			postID := chi.URLParam(r, "postID")
+
+			post := GetPost(db, postID)
+			log.Debug(post.TagString())
+
+			log.Info("Rendering Edit Post form")
+			t, err := getTemplate(templatesDir, "editpost.html")
+			if err != nil {
+				log.Errorf("Could not get template: %v", err)
+			}
+
+			err = t.ExecuteTemplate(w, "base", struct {
+				Config     Config
+				Post       Post
+				FormAction string
+				IsOwner    bool
+				TextHeight int
+				ShowSlug   bool
+				ShowExpand bool
+			}{
+				Config:     config,
+				Post:       post,
+				FormAction: "/new",
+				IsOwner:    true,
+				TextHeight: 20,
+				ShowSlug:   true,
+				ShowExpand: false,
+			})
+			return
 		}
 
-		err = t.ExecuteTemplate(w, "redirect", struct {
-			Config Config
-			Url    string
-		}{
-			Config: config,
-			Url:    "/",
-		})
+		postID := chi.URLParam(r, "postID")
+		post := GetPost(db, postID)
+
+		title := r.PostFormValue("title")
+		tags := r.PostFormValue("tags")
+		body := r.PostFormValue("body")
+
+		post.Title = title
+		post.Tags = strings.Split(tags, ",")
+		post.Body = strings.TrimSpace(body)
+
+		log.Debug(post)
+
+		err := repo.SavePostFile(post)
+		if err != nil {
+			log.Errorf("Could not save post file: %v", err)
+		}
+
+		err = SavePost(db, post)
+		if err != nil {
+			log.Errorf("Could not save post: %v", err)
+		}
+
+		// t, err := getTemplate(templatesDir, "base/redirect.html")
+		// if err != nil {
+		// 	log.Errorf("Could not get template: %v", err)
+		// }
+
+		// err = t.ExecuteTemplate(w, "redirect", struct {
+		// 	Config Config
+		// 	Url    string
+		// }{
+		// 	Config: config,
+		// 	Url:    "/",
+		// })
+		redirect(w, templatesDir, "/")
 		return
 	}
 }
@@ -154,7 +239,7 @@ func CreateSigninPageFunc(
 					})
 				}
 			}
-			t, err := getTemplate(templatesDir, "redirect.html")
+			t, err := getTemplate(templatesDir, "base/redirect.html")
 			if err != nil {
 				log.Errorf("Could not get template: %v", err)
 			}
@@ -208,6 +293,7 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
 		"markdown": markDowner,
 		"excerpt":  excerpter,
+		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 
 	t, err := t.ParseFiles(
@@ -253,7 +339,7 @@ func checkIsOwner(config Config, r *http.Request) bool {
 }
 
 func redirect(w http.ResponseWriter, templatesDir string, url string) {
-	t, err := getTemplate(templatesDir, "redirect.html")
+	t, err := getTemplate(templatesDir, "base/redirect.html")
 	if err != nil {
 		log.Errorf("Could not get template: %v", err)
 		return
