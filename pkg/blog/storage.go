@@ -1,0 +1,134 @@
+package blog
+
+import (
+	"database/sql"
+	"strings"
+	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/sirupsen/logrus"
+)
+
+func GetDb(dbFile string) (*sql.DB, error) {
+	return sql.Open("sqlite3", dbFile)
+}
+
+type GetPostOpts struct {
+	Title string
+	// PostDate time.Time
+	Tags  []string
+	Body  string
+	Limit int
+}
+
+var dateFmts = [...]string{
+	"2006-01-02T03:04:05",
+	"2006-01-02T03:04:05Z",
+	"2006-01-02 03:04:05",
+}
+
+func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
+	log := logrus.New()
+
+	var posts = make([]Post, 0)
+
+	rows, err := db.Query(`
+		SELECT slug, title, tags,
+		postdate, body FROM posts
+		ORDER BY datetime(postdate) DESC
+		LIMIT 20`)
+
+	if err != nil {
+		log.Errorf("Could not load posts: %v", err)
+	}
+
+	for rows.Next() {
+		// fmt.Printf("%v", row)
+		var p Post
+		var body string
+		var tags string
+		var dateStr string
+
+		err = rows.Scan(&p.Slug, &p.Title, &tags, &dateStr, &body)
+		if err != nil {
+			log.Error(err)
+		}
+		var date time.Time
+		var err error
+		for _, dateFmt := range dateFmts {
+			date, err = time.Parse(dateFmt, dateStr)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			log.Errorf("Cannot parse date from %s", dateStr)
+			p.PostDate = time.Now()
+		} else {
+			p.PostDate = date
+		}
+
+		p.Tags = strings.Split(tags, ", ")
+
+		p.Body = body
+
+		posts = append(posts, p)
+	}
+	return posts
+}
+
+func CreatePost(db *sql.DB, post Post) error {
+	log := logrus.New()
+
+	_, err := db.Exec(`
+	INSERT into posts (
+		slug, title, tags,
+		postdate, body
+	) VALUES (
+		?, ?, ?,
+		datetime(), ?
+	)
+	`, post.Slug, post.Title,
+		strings.Join(post.Tags, ","),
+		post.Body)
+
+	if err != nil {
+		log.Errorf("Could not save post: %v", err)
+		return err
+	}
+
+	return nil
+
+}
+
+func initDb(dbFile string) {
+	createSql := `
+	CREATE TABLE IF NOT EXISTS posts (
+		id integer primary key,
+		slug varchar(256) unique,
+		title varchar(1024),
+		tags varchar(1024),
+		postdate varchar(25),
+		body text,
+		format varchar(15));
+	`
+	db, err := GetDb(dbFile)
+	if err != nil {
+		log.Fatalf("Could not init db at %s: %v", dbFile, err)
+	}
+
+	res, err := db.Exec(createSql)
+	if err != nil {
+		log.Fatalf("Could not init db at %s: %v", dbFile, err)
+	}
+	log.Debug(res)
+}
+
+func checkDb(dbFile string) bool {
+	db, err := GetDb(dbFile)
+	if err != nil {
+		log.Fatalf("Could not check db at %s", dbFile)
+	}
+	_, err = db.Exec(`SELECT count(*) FROM posts`)
+	return err == nil
+}
