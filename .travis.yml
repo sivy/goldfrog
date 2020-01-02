@@ -1,5 +1,22 @@
 language: go
-
 go:
 - 1.13
+jobs:
+  include:
+  - stage: test
+    script: go test -v ./...
+  - stage: build
+    script:
+    - go build -o dist/goldfrogd cmd/goldfrogd/main.go
 
+before_deploy:
+- tar -zcf dist/goldfrogd.tar.gz dist/goldfrogd
+
+deploy:
+  provider: releases
+  api_key:
+    secure: j2v6Ep8iDr4L3fpoVNy81SE50sFzoqXK7sDylgmMYqZ/OZ/7yy2h8BoMfK6RwoqduQiypQcRsDtE1AHhE7cN5OL8rCX6+wzdY648u/4qbz7VZIqHUEC57PeM/LOAtE5lF7MX2jnDD41R1bTt1wzxTfqAKo9qpLp8kfF03buNJE/hHjI9xQepymoirikqU+3aeG560tjsMyZ977Xqqz41wec9hQLJGyDXJlkmsNARPYeTasLmCvD0aJL27Lv5P5M5OdDU68mdFVPf4WFzAut6etQSGV/Uihlbxpcq77Nv2NrHbU53uXW/PEIaPcEV2MI8AK2ZB5fZr55fpQTErSEQRCumFIOs5iFUpWsbmEIdxXbtbTNJrYXTc3xES6ZLgAa+xcZhxKbAEOmTAIdraM900TXKt0xY0NrC1lys2jLb4TYlcTH+AP9JBz2zZCzbBnVLlbnDLfHdEZVZrx0Iop4X27sg+kMgtNeRZ0WoUTkhqIeadlaHcUhlaU8LGu4du5x9lq7jC0+q6BVsvo8P38stlMsMtEsNX7iBdMG0omUR364LO0EDLQb+luiQEnQN2QKsB4J9qhojC0bUS8hApkIq4KFbzHQVLw66vlPn2AlZ1Yc1aEezEJKSOdev/cY//JzZ9H6XHCyxHvgua4C6gl4ZOhJ3e0EjGnOQ0xEl2T+qR8w=
+  file: dist/goldfrogd.tar.gz
+  skip_cleanup: true
+  on:
+    tags: true
