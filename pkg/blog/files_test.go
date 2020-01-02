@@ -60,17 +60,17 @@ func TestGetDateWithGoodDateStr(t *testing.T) {
 }
 
 func TestGetDateWithBadDateStr(t *testing.T) {
-	dt, err := getPostDate("2019-12-31T11:59:59", "2020-01-01-happy-new-years.md")
+	dt, err := getPostDate("", "2020-01-01-happy-new-years.md")
 
 	assert.Nil(t, err)
 	assert.NotNil(t, dt)
 
-	assert.Equal(t, dt.Year(), 2020)
-	assert.Equal(t, dt.Month(), time.Month(1))
-	assert.Equal(t, dt.Day(), 1)
-	assert.Equal(t, dt.Hour(), 0)
-	assert.Equal(t, dt.Minute(), 0)
-	assert.Equal(t, dt.Second(), 0)
+	assert.Equal(t, 2020, dt.Year())
+	assert.Equal(t, time.Month(1), dt.Month())
+	assert.Equal(t, 1, dt.Day())
+	assert.Equal(t, 0, dt.Hour())
+	assert.Equal(t, 0, dt.Minute())
+	assert.Equal(t, 0, dt.Second())
 }
 
 func TestPostSlug(t *testing.T) {

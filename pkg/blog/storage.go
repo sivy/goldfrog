@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/araddon/dateparse"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
@@ -55,12 +56,9 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		}
 		var date time.Time
 		var err error
-		for _, dateFmt := range dateFmts {
-			date, err = time.Parse(dateFmt, dateStr)
-			if err == nil {
-				break
-			}
-		}
+
+		date, err = dateparse.ParseAny(dateStr)
+
 		if err != nil {
 			log.Errorf("Cannot parse date from %s", dateStr)
 			p.PostDate = time.Now()

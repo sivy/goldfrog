@@ -113,7 +113,7 @@ func CreateNewPostFunc(
 			log.Errorf("Could not save post: %v", err)
 		}
 
-		t, err := getTemplate(templatesDir, "redirect.html")
+		t, err := getTemplate(templatesDir, "base/redirect.html")
 		if err != nil {
 			log.Errorf("Could not get template: %v", err)
 		}

@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/araddon/dateparse"
 )
 
 type PostsRepo struct {
@@ -129,16 +131,20 @@ func splitFile(source string) []string {
 }
 
 func getPostDate(dateStr string, filename string) (time.Time, error) {
-	date, err := time.Parse("2006-01-02 03:04:05", dateStr)
+
+	date, err := dateparse.ParseAny(dateStr)
+
 	if err == nil {
 		return date, nil
 	}
-	log.Debug(err)
+	log.Warn(err)
 
 	pathRe := regexp.MustCompile(`^([\d]{4})-([\d]{2})-([\d]{2})-`)
 	r := pathRe.FindSubmatch([]byte(filename))
 	if len(r) == 0 {
-		return time.Now(), errors.New("Cannot get postdate from dateStr or filename")
+		return time.Now(), errors.New(fmt.Sprintf(
+			"Cannot get postdate from dateStr or filename: %s",
+			filename))
 	}
 	year := r[1]
 	month := r[2]
@@ -151,10 +157,10 @@ func getPostDate(dateStr string, filename string) (time.Time, error) {
 func getPostSlugFromFile(filename string) string {
 	pathRe := regexp.MustCompile(`^([\d]{4})-([\d]{2})-([\d]{2})-(.*?)\.md`)
 	r := pathRe.FindSubmatch([]byte(filename))
-	fmt.Println(string(r[4]))
 	if len(r) != 5 { // r[0] is the full string
 		return ""
 	}
+	fmt.Println(string(r[4]))
 	return string(r[4])
 }
 

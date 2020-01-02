@@ -3,6 +3,7 @@ module github.com/sivy/goldfrog
 go 1.13
 
 require (
+	github.com/araddon/dateparse v0.0.0-20190622164848-0fb0a474d195
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/gomarkdown/markdown v0.0.0-20191229055418-359dc4b9d66b
