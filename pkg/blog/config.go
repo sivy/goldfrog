@@ -18,4 +18,9 @@ type Config struct {
 		Username string `yaml:"username"`
 		Password string `yaml:"password"`
 	} `yaml:"signin"`
+
+	Server struct {
+		Location string `yaml:"location"`
+		Port     string `yaml:"port"`
+	} `yaml:"server"`
 }

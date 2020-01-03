@@ -71,10 +71,12 @@ func runServer(
 		blog.FileServer(r, "/static", http.Dir(staticDir))
 	})
 
-	loc := fmt.Sprintf(":8080")
+	loc := fmt.Sprintf(fmt.Sprintf(
+		"%s:%s", config.Server.Location,
+		config.Server.Port))
 
 	log.Info("=====================================")
-	log.Info("Starting GoldFrog!")
+	log.Infof("Starting GoldFrog on %s", loc)
 	log.Info("=====================================")
 
 	http.ListenAndServe(loc, r)
