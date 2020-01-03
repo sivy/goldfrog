@@ -62,7 +62,8 @@ func runServer(
 	r.Route("/", func(r chi.Router) {
 		r.Mount("/", blog.CreateIndexFunc(config, db, templatesDir))
 		r.Mount("/new", blog.CreateNewPostFunc(config, db, templatesDir, repo, staticDir))
-		r.Mount("/edit/{postID}", blog.CreateEditPostFunc(config, db, templatesDir, repo))
+		r.Mount("/edit/{postID}", blog.CreateEditPostFunc(config, db, templatesDir, repo, staticDir))
+		r.Mount("/edit", blog.CreateEditPostFunc(config, db, templatesDir, repo, staticDir))
 		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, templatesDir, repo))
 
 		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile, templatesDir))
