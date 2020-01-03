@@ -20,7 +20,7 @@ jobs:
       - run: go get -v -t -d ./...
       - run: go test -v ./...
       - run: mkdir dist
-      - run: go build -o dist/goldfrogd cmd/golfrogd/main.go
+      - run: go build -o dist/goldfrogd cmd/goldfrogd/main.go
 
       # publish to s3
       - run: sudo apt-get install python-dev
