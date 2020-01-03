@@ -19,6 +19,8 @@ jobs:
       # specify any bash command here prefixed with `run: `
       - run: go get -v -t -d ./...
       - run: go test -v ./...
+      - run: mkdir dist
+      - run: go build -o dist/goldfrogd cmd/golfrogd/main.go
 
       # publish to s3
       - run: sudo apt-get install python-dev
