@@ -97,6 +97,7 @@ func CreateNewPostFunc(
 			})
 			return
 		}
+
 		r.ParseMultipartForm(32 << 20)
 		file, handler, err := r.FormFile("postimage")
 		var hasImage bool
@@ -168,17 +169,19 @@ func CreateNewPostFunc(
 }
 
 func CreateEditPostFunc(
-	config Config, db *sql.DB, templatesDir string, repo PostsRepo) http.HandlerFunc {
+	config Config, db *sql.DB, templatesDir string, repo PostsRepo, staticDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		if r.Method == "GET" {
+			postID := chi.URLParam(r, "postID")
+			post, err := GetPost(db, postID)
+			if err != nil {
+				log.Error(err)
+			}
+
 			if !checkIsOwner(config, r) {
 				http.Redirect(w, r, "/", http.StatusUnauthorized)
 			}
-
-			postID := chi.URLParam(r, "postID")
-
-			post := GetPost(db, postID)
-			log.Debug(post.TagString())
 
 			log.Info("Rendering Edit Post form")
 			t, err := getTemplate(templatesDir, "editpost.html")
@@ -197,7 +200,7 @@ func CreateEditPostFunc(
 			}{
 				Config:     config,
 				Post:       post,
-				FormAction: "/new",
+				FormAction: "/edit",
 				IsOwner:    true,
 				TextHeight: 20,
 				ShowSlug:   true,
@@ -205,13 +208,49 @@ func CreateEditPostFunc(
 			})
 			return
 		}
+		log.Info("Handling Edit Post form")
 
-		postID := chi.URLParam(r, "postID")
-		post := GetPost(db, postID)
+		postID := r.FormValue("postID")
+		post, err := GetPost(db, postID)
+		if err != nil {
+			log.Error(err)
+		}
+
+		r.ParseMultipartForm(32 << 20)
+		file, handler, err := r.FormFile("postimage")
+		var hasImage bool
+		var imageUrl string
+
+		if err == nil {
+			// there's an image
+			hasImage = true
+			defer file.Close()
+			log.Infof("File upload in progress...")
+			f, err := os.OpenFile(
+				filepath.Join(staticDir, "images", handler.Filename),
+				os.O_WRONLY|os.O_CREATE, 0777)
+			if err != nil {
+				log.Error(err)
+				hasImage = false
+			} else {
+				defer f.Close()
+				io.Copy(f, file)
+				imageUrl = filepath.Join("/static/images", handler.Filename)
+			}
+		} else {
+			log.Error(err)
+		}
 
 		title := r.PostFormValue("title")
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
+
+		if hasImage {
+			body = strings.Replace(
+				body, "[image]",
+				fmt.Sprintf("![%s](%s)", imageUrl, imageUrl),
+				-1)
+		}
 
 		post.Title = title
 		post.Tags = strings.Split(tags, ",")
@@ -219,7 +258,7 @@ func CreateEditPostFunc(
 
 		log.Debug(post)
 
-		err := repo.SavePostFile(post)
+		err = repo.SavePostFile(post)
 		if err != nil {
 			log.Errorf("Could not save post file: %v", err)
 		}
