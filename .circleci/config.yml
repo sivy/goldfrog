@@ -26,13 +26,13 @@ jobs:
       - run: go build -o dist/indexer cmd/indexer/main.go
 
       # compress the binaries for distribution
-      - run: tar -zcf dist/goldfrog.tgz dist/*
+      - run: tar -zcf goldfrog.tgz dist/*
 
       # publish to s3
       - run: sudo apt-get install python-dev
       - run: sudo apt-get install python-pip
       - aws-s3/copy:
-          from: dist/goldfrogd.tgz
+          from: goldfrogd.tgz
           to: 's3://goldfrog-releases'
           arguments: |
             --acl public-read
