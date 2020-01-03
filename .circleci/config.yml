@@ -21,7 +21,7 @@ jobs:
       - run: go test -v ./...
 
       # publish to s3
-      - run: sudo apt-get install python-dev
+      - run: apt-get install python-dev
       - aws-s3/copy:
           from: dist/goldfrogd.tar.gz
           to: 's3://goldfrog-releases'
