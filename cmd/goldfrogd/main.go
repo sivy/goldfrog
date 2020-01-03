@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -60,7 +61,7 @@ func runServer(
 
 	r.Route("/", func(r chi.Router) {
 		r.Mount("/", blog.CreateIndexFunc(config, db, templatesDir))
-		r.Mount("/new", blog.CreateNewPostFunc(config, db, templatesDir, repo))
+		r.Mount("/new", blog.CreateNewPostFunc(config, db, templatesDir, repo, staticDir))
 		r.Mount("/edit/{postID}", blog.CreateEditPostFunc(config, db, templatesDir, repo))
 		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, templatesDir, repo))
 
@@ -88,26 +89,30 @@ func main() {
 	var dbFile string
 
 	userHomeDir, _ := os.UserHomeDir()
+	goldfrogHome, found := os.LookupEnv("BLOGHOME")
+	if !found {
+		goldfrogHome = filepath.Join(userHomeDir, "goldfrog")
+	}
 
 	flag.StringVar(
-		&configFile, "config",
-		userHomeDir+"/goldfrog/config.yaml",
+		&configFile, "config_dir",
+		goldfrogHome,
 		"Location of config file")
 	flag.StringVar(
 		&postsDir, "posts_dir",
-		userHomeDir+"/goldfrog/posts",
+		goldfrogHome+"/posts",
 		"Location of your posts (Jekyll-compatible markdown)")
 	flag.StringVar(
 		&templatesDir, "templates_dir",
-		userHomeDir+"/goldfrog/templates",
+		goldfrogHome+"/templates",
 		"Location of blog templates")
 	flag.StringVar(
 		&staticDir, "static_dir",
-		userHomeDir+"/goldfrog/static",
+		goldfrogHome+"/static",
 		"Location of static resourcs to be served at /static")
 	flag.StringVar(
 		&dbFile, "db",
-		userHomeDir+"/goldfrog/blog.db",
+		goldfrogHome+"/blog.db",
 		"File path to sqlite db for indexed content")
 	flag.Parse()
 	log.Debug(postsDir)
