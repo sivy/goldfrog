@@ -86,6 +86,7 @@ func main() {
 	var templatesDir string
 	var staticDir string
 	var dbFile string
+
 	userHomeDir, _ := os.UserHomeDir()
 
 	flag.StringVar(
