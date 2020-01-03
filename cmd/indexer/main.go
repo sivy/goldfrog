@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
@@ -55,9 +56,13 @@ func main() {
 	var postsDir string
 	var dbFile string
 	userHomeDir, _ := os.UserHomeDir()
+	goldfrogHome, found := os.LookupEnv("BLOGHOME")
+	if !found {
+		goldfrogHome = filepath.Join(userHomeDir, "goldfrog")
+	}
 
-	flag.StringVar(&postsDir, "posts_dir", userHomeDir+"/goldfrog/posts", "")
-	flag.StringVar(&dbFile, "db", userHomeDir+"/goldfrog/blog.db", "")
+	flag.StringVar(&postsDir, "posts_dir", goldfrogHome+"/posts", "")
+	flag.StringVar(&dbFile, "db", goldfrogHome+"/blog.db", "")
 	flag.Parse()
 	log.Debug(postsDir)
 	fmt.Println(postsDir)
