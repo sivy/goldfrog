@@ -32,7 +32,7 @@ jobs:
       - run: sudo apt-get install python-dev
       - run: sudo apt-get install python-pip
       - aws-s3/copy:
-          from: dist/goldfrogd.tar.gz
+          from: dist/goldfrogd.tgz
           to: 's3://goldfrog-releases'
           arguments: |
             --acl public-read
