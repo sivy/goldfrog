@@ -22,7 +22,7 @@ jobs:
 
       # publish to s3
       - run: sudo apt-get install python-dev
-      - run: sudo apt-get install pip
+      - run: sudo apt-get install python-pip
       - aws-s3/copy:
           from: dist/goldfrogd.tar.gz
           to: 's3://goldfrog-releases'
