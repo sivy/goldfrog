@@ -2,6 +2,10 @@
 #
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
+
+orbs:
+    aws-s3: circleci/aws-s3@1.0.11
+
 jobs:
   build:
     docker:
@@ -24,3 +28,9 @@ jobs:
       # specify any bash command here prefixed with `run: `
       - run: go get -v -t -d ./...
       - run: go test -v ./...
+
+      # publish to s3
+      - aws-s3/copy:
+        from: dist/goldfrogd.tar.gz
+        to: 's3://goldfrog-releases'
+        arguments: '--dryrun'
