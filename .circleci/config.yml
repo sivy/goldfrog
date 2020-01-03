@@ -33,4 +33,4 @@ jobs:
       - aws-s3/copy:
           from: dist/goldfrogd.tar.gz
           to: 's3://goldfrog-releases'
-          arguments: '--dryrun'
+          # arguments: '--dryrun'
