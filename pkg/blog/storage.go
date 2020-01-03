@@ -75,7 +75,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 	return posts
 }
 
-func GetPost(db *sql.DB, postID string) Post {
+func GetPost(db *sql.DB, postID string) (Post, error) {
 	log := logrus.New()
 
 	var p Post
@@ -87,6 +87,7 @@ func GetPost(db *sql.DB, postID string) Post {
 
 	if err != nil {
 		log.Errorf("Could not load post %s: %v", postID, err)
+		return p, err
 	}
 
 	for rows.Next() {
@@ -115,7 +116,7 @@ func GetPost(db *sql.DB, postID string) Post {
 
 		p.Body = body
 	}
-	return p
+	return p, nil
 }
 
 func CreatePost(db *sql.DB, post Post) error {
@@ -148,7 +149,7 @@ func SavePost(db *sql.DB, post Post) error {
 	_, err := db.Exec(`
 	UPDATE posts SET
 		title=?, tags=?, body=?
-	) WHERE id=?
+	WHERE id=?
 	`, post.Title,
 		strings.Join(post.Tags, ","),
 		post.Body,
