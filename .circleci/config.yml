@@ -25,7 +25,7 @@ jobs:
       - run: go build -o dist/goldfrogd cmd/goldfrogd/main.go
 
       # compress the binary for distribution
-      - run: tar -zcf dist/goldfrogd dist/goldfrogd.tar.gz
+      - run: tar -zcf dist/goldfrogd.tar.gz dist/goldfrogd
 
       # publish to s3
       - run: sudo apt-get install python-dev
