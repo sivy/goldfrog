@@ -5,13 +5,16 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/parser"
 	"github.com/leekchan/gtf"
 )
 
@@ -62,7 +65,7 @@ func CreateIndexFunc(config Config, db *sql.DB, templatesDir string) http.Handle
 }
 
 func CreateNewPostFunc(
-	config Config, db *sql.DB, templatesDir string, repo PostsRepo) http.HandlerFunc {
+	config Config, db *sql.DB, templatesDir string, repo PostsRepo, staticDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			if !checkIsOwner(config, r) {
@@ -94,10 +97,39 @@ func CreateNewPostFunc(
 			})
 			return
 		}
+		r.ParseMultipartForm(32 << 20)
+		file, handler, err := r.FormFile("postimage")
+		var hasImage bool
+		var imageUrl string
+
+		if err == nil {
+			// there's an image
+			hasImage = true
+			defer file.Close()
+			log.Infof("File upload in progress...")
+			f, err := os.OpenFile(
+				filepath.Join(staticDir, "images", handler.Filename),
+				os.O_WRONLY|os.O_CREATE, 0777)
+			if err != nil {
+				log.Error(err)
+				hasImage = false
+			} else {
+				defer f.Close()
+				io.Copy(f, file)
+				imageUrl = filepath.Join("/static/images", handler.Filename)
+			}
+		}
 
 		title := r.PostFormValue("title")
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
+
+		if hasImage {
+			body = strings.Replace(
+				body, "[image]",
+				fmt.Sprintf("![%s](%s)", imageUrl, imageUrl),
+				-1)
+		}
 
 		p := Post{
 			Title:    title,
@@ -108,7 +140,7 @@ func CreateNewPostFunc(
 		}
 
 		log.Debug(p)
-		err := repo.SavePostFile(p)
+		err = repo.SavePostFile(p)
 		if err != nil {
 			log.Errorf("Could not save post file: %v", err)
 		}
@@ -285,8 +317,11 @@ func CreateSigninPageFunc(
 }
 
 func markDowner(args ...interface{}) template.HTML {
+	extensions := parser.CommonExtensions | parser.HardLineBreak
+	parser := parser.NewWithExtensions(extensions)
+
 	s := markdown.ToHTML(
-		[]byte(fmt.Sprintf("%s", args...)), nil, nil)
+		[]byte(fmt.Sprintf("%s", args...)), parser, nil)
 	return template.HTML(s)
 }
 
