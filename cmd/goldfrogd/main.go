@@ -126,7 +126,6 @@ func main() {
 	log.Debug("loading config")
 
 	config := loadConfig(configFile)
-	log.Debug(config)
 
 	// runWatcher(postsDir, dbFile)
 	runServer(config, dbFile, templatesDir, postsDir, staticDir)
