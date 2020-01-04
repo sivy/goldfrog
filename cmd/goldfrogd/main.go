@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -15,7 +16,6 @@ import (
 )
 
 var version string // set in linker with ldflags -X main.version=
-var tag string     // set in linker with ldflags -X main.tag=
 
 var log = logrus.New()
 
@@ -137,6 +137,7 @@ func main() {
 	}
 
 	if showVersion {
+		tag := strings.Split(version, "-")[0]
 		fmt.Println(tag)
 		return
 	}
