@@ -13,6 +13,9 @@ jobs:
 
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
     steps:
+      - attach_workspace:
+        at: ./artifacts
+
       # get source
       - checkout
 
@@ -22,15 +25,22 @@ jobs:
 
       # build the binary
       - run: mkdir dist
-      - run: go build -o dist/goldfrogd cmd/goldfrogd/main.go
-      - run: go build -o dist/indexer cmd/indexer/main.go
+      - run: make server
+      - run: make indexer
 
+  publish-to-s3:
+    docker:
+      - image: circleci/python:3.7.2
+    steps:
       # compress the binaries for distribution
-      - run: tar -zcf goldfrog.tgz dist/*
+      - attach_workspace:
+        at: ./artifacts
+
+      - run: tar -zcf goldfrog-`./artifacts/goldfrogd --version`.tgz dist/*
 
       # publish to s3
-      - run: sudo apt-get install python-dev
-      - run: sudo apt-get install python-pip
+      # - run: sudo apt-get install python-dev
+      # - run: sudo apt-get install python-pip
       - aws-s3/copy:
           from: goldfrog.tgz
           to: 's3://goldfrog-releases'
