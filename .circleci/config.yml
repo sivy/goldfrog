@@ -38,9 +38,10 @@ jobs:
       - attach_workspace:
           at: dist
 
-      # this fails for lack of glibc_2.28
-      - run: tar -zcf goldfrog-`dist/goldfrogd --tag`.tgz dist/*
+      # "Tag" package
       - run: tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
+      # "Long version" (tag-int-hash) package
+      - run: tar -zcf goldfrog-`dist/goldfrogd --version-long`.tgz dist/*
 
       # publish to s3
       - run: sudo apt-get -y install python-dev python-pip
