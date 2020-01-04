@@ -39,6 +39,7 @@ jobs:
           at: dist
 
       # this fails for lack of glibc_2.28
+      - run: tar -zcf goldfrog-`dist/goldfrogd --tag`.tgz dist/*
       - run: tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
 
       # publish to s3
