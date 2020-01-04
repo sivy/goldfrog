@@ -38,10 +38,19 @@ jobs:
       - attach_workspace:
           at: dist
 
+
       # "Tag" package
-      - run: tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
+      - run:
+        command: |
+          echo "short version"
+          dist/goldfrogd --version
+          tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
       # "Long version" (tag-int-hash) package
-      - run: tar -zcf goldfrog-`dist/goldfrogd --version-long`.tgz dist/*
+      - run:
+        command: |
+          echo "long version"
+          dist/goldfrogd --version-long
+          tar -zcf goldfrog-`dist/goldfrogd --version-long`.tgz dist/*
 
       # publish to s3
       - run: sudo apt-get -y install python-dev python-pip
