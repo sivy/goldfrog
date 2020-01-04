@@ -13,8 +13,8 @@ jobs:
 
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
     steps:
-      - attach_workspace:
-          at: ./artifacts
+      # - attach_workspace:
+      #     at: ./artifacts
 
       # get source
       - checkout
