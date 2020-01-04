@@ -27,11 +27,11 @@ jobs:
       - run: mkdir dist
       - run: make server
       - run: make indexer
-      # - persist_to_workspace:
-      #     root: .
-      #     paths:
-      #       - goldfrogd
-      #       - indexer
+      - persist_to_workspace:
+          root: .
+          paths:
+            - goldfrogd
+            - indexer
 
   publish-to-s3:
     docker:
