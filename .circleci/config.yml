@@ -32,17 +32,17 @@ jobs:
 
   publish-to-s3:
     docker:
-      - image: circleci/python:3.7.2
+      - image: circleci/golang:1.13
     steps:
       # compress the binaries for distribution
       - attach_workspace:
           at: dist
 
-      # - run: sudo apt-get -y install glibc
       # this fails for lack of glibc_2.28
       - run: tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
 
       # publish to s3
+      - run: sudo apt-get -y install python-dev python-pip
       - aws-s3/copy:
           from: "*.tgz"
           to: 's3://goldfrog-releases'
