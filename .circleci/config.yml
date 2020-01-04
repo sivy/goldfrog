@@ -40,13 +40,13 @@ jobs:
       # compress the binaries for distribution
       - attach_workspace:
           at: dist
-      - run: tar -zcf goldfrog-`goldfrogd --version`.tgz dist/*
+      - run: tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
 
       # publish to s3
       # - run: sudo apt-get install python-dev
       # - run: sudo apt-get install python-pip
       - aws-s3/copy:
-          from: goldfrog.tgz
+          from: "*.tgz"
           to: 's3://goldfrog-releases'
           arguments: |
             --acl public-read
