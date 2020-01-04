@@ -24,40 +24,43 @@ jobs:
       - run: mkdir dist
       - run: make server
       - run: make indexer
+      - run: goldfrogd --version > TAG.txt
+      - run: goldfrogd --version-long > VERSION.txt
       - persist_to_workspace:
           root: .
           paths:
+            - TAG.txt
+            - VERSION.txt
             - goldfrogd
             - indexer
 
   publish-to-s3:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/python:3.7.2
     steps:
       # compress the binaries for distribution
       - attach_workspace:
           at: dist
 
-
       # "Tag" package
       - run:
           command: |
             echo "short version"
-            dist/goldfrogd --version
-            tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
+            cat dist/TAG.txt
+            tar -zcf goldfrog-`cat dist/TAG.txt`.tgz dist/*
       # "Long version" (tag-int-hash) package
       - run:
           command: |
             echo "long version"
-            dist/goldfrogd --version-long
-            tar -zcf goldfrog-`dist/goldfrogd --version-long`.tgz dist/*
+            cat dist/VERSION.txt
+            tar -zcf goldfrog-`cat dist/VERSION.txt`.tgz dist/*
 
       # publish to s3
-      - run: sudo apt-get -y install python-dev python-pip
-      - run: pip install --upgrade awscli
+      # - run: sudo apt-get -y install python-dev python-pip
+      # - run: pip install --upgrade awscli
       - aws-s3/copy:
-          from: "\"*.tgz\""
-          to: "s3://goldfrog-releases"
+          from: *.tgz
+          to: s3://goldfrog-releases
           arguments: |
             --acl public-read
 
