@@ -57,7 +57,7 @@ jobs:
       - run: pip install --upgrade awscli
       - aws-s3/copy:
           from: "*.tgz"
-          to: 's3://goldfrog-releases'
+          to: "\"s3://goldfrog-releases\""
           arguments: |
             --acl public-read
 
