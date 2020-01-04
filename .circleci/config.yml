@@ -41,16 +41,16 @@ jobs:
 
       # "Tag" package
       - run:
-        command: |
-          echo "short version"
-          dist/goldfrogd --version
-          tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
+          command: |
+            echo "short version"
+            dist/goldfrogd --version
+            tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
       # "Long version" (tag-int-hash) package
       - run:
-        command: |
-          echo "long version"
-          dist/goldfrogd --version-long
-          tar -zcf goldfrog-`dist/goldfrogd --version-long`.tgz dist/*
+          command: |
+            echo "long version"
+            dist/goldfrogd --version-long
+            tar -zcf goldfrog-`dist/goldfrogd --version-long`.tgz dist/*
 
       # publish to s3
       - run: sudo apt-get -y install python-dev python-pip
