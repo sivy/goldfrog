@@ -24,8 +24,8 @@ jobs:
       - run: mkdir dist
       - run: make server
       - run: make indexer
-      - run: goldfrogd --version > TAG.txt
-      - run: goldfrogd --version-long > VERSION.txt
+      - run: ./goldfrogd --version > TAG.txt
+      - run: ./goldfrogd --version-long > VERSION.txt
       - persist_to_workspace:
           root: .
           paths:
