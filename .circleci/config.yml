@@ -34,7 +34,7 @@ jobs:
     steps:
       # compress the binaries for distribution
       - attach_workspace:
-        at: ./artifacts
+          at: ./artifacts
 
       - run: tar -zcf goldfrog-`./artifacts/goldfrogd --version`.tgz dist/*
 
