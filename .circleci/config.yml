@@ -27,16 +27,19 @@ jobs:
       - run: mkdir dist
       - run: make server
       - run: make indexer
+      - persist_to_workspace:
+          root: /tmp/dist
+          paths:
+            - goldfrogd
+            - indexer
 
   publish-to-s3:
     docker:
       - image: circleci/python:3.7.2
     steps:
       # compress the binaries for distribution
-      - attach_workspace:
-          at: ./artifacts
 
-      - run: tar -zcf goldfrog-`./artifacts/goldfrogd --version`.tgz dist/*
+      - run: tar -zcf goldfrog-`/tmp/dist/goldfrogd --version`.tgz /tmp/dist/*
 
       # publish to s3
       # - run: sudo apt-get install python-dev
