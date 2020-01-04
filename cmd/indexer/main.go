@@ -11,6 +11,9 @@ import (
 	"github.com/sivy/goldfrog/pkg/blog"
 )
 
+var version string // set in linker with ldflags -X main.version=
+var tag string     // set in linker with ldflags -X main.tag=
+
 var log = logrus.New()
 
 func runWatcher(postsDir string, dbFile string) {
@@ -51,10 +54,13 @@ func runWatcher(postsDir string, dbFile string) {
 
 func main() {
 	log.SetLevel(logrus.DebugLevel)
-	log.Debug("Goldfrog indexer")
 
 	var postsDir string
 	var dbFile string
+	var verbose bool
+	var showVersionLong bool
+	var showVersion bool
+
 	userHomeDir, _ := os.UserHomeDir()
 	goldfrogHome, found := os.LookupEnv("BLOGHOME")
 	if !found {
@@ -63,9 +69,22 @@ func main() {
 
 	flag.StringVar(&postsDir, "posts_dir", goldfrogHome+"/posts", "")
 	flag.StringVar(&dbFile, "db", goldfrogHome+"/blog.db", "")
-	flag.Parse()
-	log.Debug(postsDir)
-	fmt.Println(postsDir)
+	flag.BoolVar(&verbose, "v", false, "")
+	flag.BoolVar(&showVersionLong, "version-long", false, "")
+	flag.BoolVar(&showVersion, "version", false, "")
 
-	blog.IndexPosts(postsDir, dbFile)
+	flag.Parse()
+	if showVersionLong {
+		fmt.Println(version)
+		return
+	}
+
+	if showVersion {
+		fmt.Println(tag)
+		return
+	}
+
+	fmt.Printf("Indexing %s", postsDir)
+
+	blog.IndexPosts(postsDir, dbFile, verbose)
 }

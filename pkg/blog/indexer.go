@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func IndexPosts(postsDir string, dbFile string) {
+func IndexPosts(postsDir string, dbFile string, verbose bool) {
 	log.Infof("Indexing posts in %s to %s", postsDir, dbFile)
 	log.Debugf("Checking db at %s", dbFile)
 
@@ -30,7 +30,7 @@ func IndexPosts(postsDir string, dbFile string) {
 
 	var i = 0
 	for _, f := range files {
-		indexed := IndexFile(f, db)
+		indexed := IndexFile(f, db, verbose)
 		if indexed {
 			i++
 		}
@@ -40,8 +40,10 @@ func IndexPosts(postsDir string, dbFile string) {
 	log.Debugf("Indexed %d files", i)
 }
 
-func IndexFile(file string, db *sql.DB) bool {
-	log.Infof("Indexing file %s", file)
+func IndexFile(file string, db *sql.DB, verbose bool) bool {
+	if verbose {
+		log.Debugf("Indexing file %s", file)
+	}
 	var post Post
 	post, err := ParseFile(file)
 
@@ -49,7 +51,9 @@ func IndexFile(file string, db *sql.DB) bool {
 		log.Errorf("Could not parse file %s", file)
 		return false
 	}
-	log.Debug(post)
+	if verbose {
+		log.Debugf("loaded post: %s", post.Title)
+	}
 
 	// does it exist?
 	rows, err := db.Query(fmt.Sprintf(
@@ -57,13 +61,13 @@ func IndexFile(file string, db *sql.DB) bool {
 
 	if err != nil {
 		log.Errorf("Error checking for post with slug %s: %v", post.Slug, err)
+		return false
 	}
 
 	var ID int
 	for rows.Next() {
 		rows.Scan(&ID)
 	}
-	log.Debugf("found rows ID: %v for post slug: %s", ID, post.Slug)
 
 	var sql string
 	if ID != 0 {
@@ -72,7 +76,7 @@ func IndexFile(file string, db *sql.DB) bool {
 		SET title='?', tags='?', postdate=?, body='?'
 		WHERE id=?`
 
-		res, err := db.Exec(
+		_, err := db.Exec(
 			sql,
 			post.Title,
 			strings.Join(post.Tags, ", "),
@@ -84,9 +88,6 @@ func IndexFile(file string, db *sql.DB) bool {
 			return false
 		}
 
-		i, _ := res.RowsAffected()
-		log.Debugf("Updated %d rows", i)
-
 	} else {
 		sql = `
 		INSERT into posts (
@@ -96,7 +97,7 @@ func IndexFile(file string, db *sql.DB) bool {
 		)
 		`
 
-		res, err := db.Exec(
+		_, err := db.Exec(
 			sql,
 			post.Slug,
 			post.Title,
@@ -109,9 +110,6 @@ func IndexFile(file string, db *sql.DB) bool {
 			log.Errorf("Could not add post %s", err)
 			return false
 		}
-
-		i, _ := res.RowsAffected()
-		log.Debugf("Inserted %d rows", i)
 	}
 
 	return true

@@ -14,6 +14,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+var version string // set in linker with ldflags -X main.version=
+var tag string     // set in linker with ldflags -X main.tag=
+
 var log = logrus.New()
 
 // exists returns whether the given file or directory exists
@@ -90,6 +93,8 @@ func main() {
 	var templatesDir string
 	var staticDir string
 	var dbFile string
+	var showVersionLong bool
+	var showVersion bool
 
 	userHomeDir, _ := os.UserHomeDir()
 	goldfrogHome, found := os.LookupEnv("BLOGHOME")
@@ -101,23 +106,41 @@ func main() {
 		&configFile, "config_dir",
 		goldfrogHome,
 		"Location of config file")
+
 	flag.StringVar(
 		&postsDir, "posts_dir",
 		goldfrogHome+"/posts",
 		"Location of your posts (Jekyll-compatible markdown)")
+
 	flag.StringVar(
 		&templatesDir, "templates_dir",
 		goldfrogHome+"/templates",
 		"Location of blog templates")
+
 	flag.StringVar(
 		&staticDir, "static_dir",
 		goldfrogHome+"/static",
 		"Location of static resourcs to be served at /static")
+
 	flag.StringVar(
 		&dbFile, "db",
 		goldfrogHome+"/blog.db",
 		"File path to sqlite db for indexed content")
+
+	flag.BoolVar(&showVersionLong, "version-long", false, "")
+	flag.BoolVar(&showVersion, "version", false, "")
 	flag.Parse()
+
+	if showVersionLong {
+		fmt.Println(version)
+		return
+	}
+
+	if showVersion {
+		fmt.Println(tag)
+		return
+	}
+
 	log.Debug(postsDir)
 	fmt.Println(postsDir)
 
