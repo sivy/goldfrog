@@ -57,7 +57,7 @@ jobs:
 
       # publish to s3
       - aws-s3/copy:
-          from: goldfrog-`cat dist/TAG.txt`.tgz goldfrog-`cat dist/VERSION.txt`.tgz
+          from: goldfrog-*.tgz
           to: s3://goldfrog-releases
           arguments: |
             --acl public-read
