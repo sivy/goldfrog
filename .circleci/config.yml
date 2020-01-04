@@ -54,6 +54,7 @@ jobs:
 
       # publish to s3
       - run: sudo apt-get -y install python-dev python-pip
+      - run: pip install -u awscli
       - aws-s3/copy:
           from: "*.tgz"
           to: 's3://goldfrog-releases'
