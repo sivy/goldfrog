@@ -38,7 +38,7 @@ jobs:
       - attach_workspace:
           at: dist
 
-      - run: apt-get -y install glibc
+      - run: sudo apt-get -y install glibc
       # this fails for lack of glibc_2.28
       - run: tar -zcf goldfrog-`dist/goldfrogd --version`.tgz dist/*
 
