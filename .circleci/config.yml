@@ -38,8 +38,9 @@ jobs:
       - image: circleci/python:3.7.2
     steps:
       # compress the binaries for distribution
-
-      - run: tar -zcf goldfrog-`goldfrogd --version`.tgz goldfrogd indexer
+      - attach_workspace:
+          at: dist
+      - run: tar -zcf goldfrog-`goldfrogd --version`.tgz dist/*
 
       # publish to s3
       # - run: sudo apt-get install python-dev
