@@ -42,12 +42,6 @@ jobs:
       - attach_workspace:
           at: dist
 
-      # "Tag" package
-      - run:
-          command: |
-            echo "short version"
-            cat dist/TAG.txt
-            tar -zcf goldfrog-`cat dist/TAG.txt`.tgz dist/*
       # "Long version" (tag-int-hash) package
       - run:
           command: |
@@ -56,17 +50,36 @@ jobs:
             tar -zcf goldfrog-`cat dist/VERSION.txt`.tgz dist/*
 
       # publish to s3
-      - aws-s3/copy:
-          from: goldfrog-*.tgz
-          to: s3://goldfrog-releases
-          arguments: |
-            --acl public-read
+      - run:
+          command: |
+            VERSION=$(cat dist/VERSION.txt)
+            aws s3 cp goldfrog-$VERSION.tgz s3://goldfrog-releases --acl public-read
+
+  publish-github-release:
+    docker:
+      - image: cibuilds/github:0.10
+    steps:
+      - attach_workspace:
+          at: ./dist
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            VERSION=$(cat TAG.txt)
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
 
 workflows:
   version: 2
   build-and-release:
     jobs:
       - build
-      - publish-to-s3:
+      # - publish-to-s3:
+      #     requires:
+      #       - build
+      - publish-github-release:
           requires:
             - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d+\.\d+\.\d+$/
