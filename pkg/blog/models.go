@@ -27,6 +27,14 @@ func (post *Post) TagString() string {
 	return strings.Join(post.Tags, ", ")
 }
 
+func (post *Post) Url() string {
+	return fmt.Sprintf(
+		"/%s/%s",
+		post.PostDate.Format("2006/01"),
+		post.Slug,
+	)
+}
+
 func (post *Post) ToString() string {
 	filecontent := fmt.Sprintf("title: %s\n", post.Title)
 	filecontent = filecontent + fmt.Sprintf("slug: %s\n", post.Slug)
