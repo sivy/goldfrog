@@ -55,8 +55,8 @@ jobs:
       # publish to s3
       - run:
           command: |
-            VERSION=$(cat dist/VERSION.txt)
-            aws s3 cp goldfrog-$VERSION.tgz s3://goldfrog-releases --acl public-read
+          aws s3 cp VERSION.txt s3://goldfrog-releases --acl public-read
+          aws s3 cp goldfrog-latest.tgz s3://goldfrog-releases --acl public-read
 
   publish-github-release:
     docker:
