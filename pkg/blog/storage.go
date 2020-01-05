@@ -22,6 +22,12 @@ type GetPostOpts struct {
 	Limit int
 }
 
+type ArchiveEntry struct {
+	Year  string
+	Month string
+	Count int
+}
+
 var dateFmts = [...]string{
 	"2006-01-02T03:04:05",
 	"2006-01-02T03:04:05Z",
@@ -37,7 +43,8 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		SELECT id, slug, title, tags,
 		postdate, body FROM posts
 		ORDER BY datetime(postdate) DESC
-		LIMIT 20`)
+		LIMIT 20
+	`)
 
 	if err != nil {
 		log.Errorf("Could not load posts: %v", err)
@@ -117,6 +124,141 @@ func GetPost(db *sql.DB, postID string) (Post, error) {
 		p.Body = body
 	}
 	return p, nil
+}
+
+func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
+	log := logrus.New()
+
+	var p Post
+
+	rows, err := db.Query(`
+		SELECT id, slug, title, tags,
+		postdate, body FROM posts
+		WHERE slug = ? LIMIT 1
+	`, postSlug)
+
+	if err != nil {
+		log.Errorf(
+			"Could not load post %s: %v", postSlug, err)
+		return p, err
+	}
+
+	for rows.Next() {
+		// fmt.Printf("%v", row)
+		var body string
+		var tags string
+		var dateStr string
+
+		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
+		if err != nil {
+			log.Error(err)
+		}
+		var date time.Time
+		var err error
+
+		date, err = dateparse.ParseAny(dateStr)
+
+		if err != nil {
+			log.Errorf("Cannot parse date from %s", dateStr)
+			p.PostDate = time.Now()
+		} else {
+			p.PostDate = date
+		}
+
+		p.Tags = strings.Split(tags, ", ")
+
+		p.Body = body
+	}
+	return p, nil
+}
+
+func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
+	log := logrus.New()
+
+	rows, err := db.Query(`
+	SELECT
+		STRFTIME('%Y', postdate) postyear,
+		STRFTIME('%m', postdate) postmonth,
+		COUNT(id) postcount
+	FROM
+		posts
+	GROUP BY
+		STRFTIME('%Y', postdate),
+		STRFTIME('%m', postdate)
+	ORDER BY
+		postyear,
+		postmonth;
+	`)
+
+	if err != nil {
+		log.Errorf("Could not load post data: %v", err)
+	}
+
+	var archiveData []ArchiveEntry
+
+	for rows.Next() {
+		// fmt.Printf("%v", row)
+		var archiveEntry ArchiveEntry
+
+		err = rows.Scan(
+			&archiveEntry.Year, &archiveEntry.Month, &archiveEntry.Count)
+
+		if err != nil {
+			log.Error(err)
+		}
+		archiveData = append(archiveData, archiveEntry)
+	}
+	return archiveData
+}
+
+func GetArchivePosts(db *sql.DB, year string, month string) []Post {
+	log := logrus.New()
+
+	rows, err := db.Query(`
+		SELECT id, slug, title, tags,
+			postdate, body
+		FROM posts
+		WHERE strftime("%Y", postdate) = ?
+		AND strftime("%m", postdate) = ?
+		ORDER BY datetime(postdate) DESC;
+	`, year, month)
+
+	if err != nil {
+		log.Errorf("Could not load posts: %v", err)
+	}
+
+	var posts []Post
+
+	for rows.Next() {
+		// fmt.Printf("%v", row)
+		var p Post
+		var body string
+		var tags string
+		var dateStr string
+
+		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
+		if err != nil {
+			log.Error(err)
+		}
+		var date time.Time
+		var err error
+
+		date, err = dateparse.ParseAny(dateStr)
+
+		if err != nil {
+			log.Errorf("Cannot parse date from %s", dateStr)
+			p.PostDate = time.Now()
+		} else {
+			p.PostDate = date
+		}
+
+		p.Tags = strings.Split(tags, ", ")
+
+		p.Body = body
+
+		posts = append(posts, p)
+	}
+	return posts
 }
 
 func CreatePost(db *sql.DB, post Post) error {
