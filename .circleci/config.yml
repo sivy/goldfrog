@@ -72,9 +72,9 @@ workflows:
   build-and-release:
     jobs:
       - build
-      # - publish-to-s3:
-      #     requires:
-      #       - build
+      - publish-to-s3:
+          requires:
+            - build
       - publish-github-release:
           requires:
             - build
