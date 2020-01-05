@@ -42,12 +42,9 @@ jobs:
       - attach_workspace:
           at: dist
 
-      # "Long version" (tag-int-hash) package
       - run:
           command: |
-            echo "long version"
-            cat dist/VERSION.txt
-            tar -zcf goldfrog-`cat dist/VERSION.txt`.tgz dist/*
+            tar -zcf goldfrog-latest.tgz dist/*
 
       - run:
           command: sudo pip install awscli
