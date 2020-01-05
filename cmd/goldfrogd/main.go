@@ -36,6 +36,7 @@ func loadConfig(configPath string) blog.Config {
 	viper.ReadInConfig()
 	var config blog.Config
 	viper.Unmarshal(&config)
+	log.Debugf("services: %v", config.Services)
 	return config
 }
 
@@ -96,7 +97,7 @@ func runServer(
 func main() {
 	log.SetLevel(logrus.DebugLevel)
 
-	var configFile string
+	var configDir string
 	var postsDir string
 	var templatesDir string
 	var staticDir string
@@ -111,7 +112,7 @@ func main() {
 	}
 
 	flag.StringVar(
-		&configFile, "config_dir",
+		&configDir, "config_dir",
 		goldfrogHome,
 		"Location of config file")
 
@@ -159,7 +160,7 @@ func main() {
 
 	log.Debug("loading config")
 
-	config := loadConfig(configFile)
+	config := loadConfig(configDir)
 
 	// runWatcher(postsDir, dbFile)
 	runServer(config, dbFile, templatesDir, postsDir, staticDir)

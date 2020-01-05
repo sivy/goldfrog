@@ -506,8 +506,6 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 
-	log.Debug(t.DefinedTemplates())
-
 	t, err := t.ParseFiles(
 		filepath.Join(templatesDir, name),
 	)
