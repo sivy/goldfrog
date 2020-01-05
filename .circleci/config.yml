@@ -50,7 +50,7 @@ jobs:
             tar -zcf goldfrog-`cat dist/VERSION.txt`.tgz dist/*
 
       - run:
-          command: pip install awscli
+          command: sudo pip install awscli
 
       # publish to s3
       - run:
