@@ -49,6 +49,9 @@ jobs:
             cat dist/VERSION.txt
             tar -zcf goldfrog-`cat dist/VERSION.txt`.tgz dist/*
 
+      - run:
+          command: pip install awscli
+
       # publish to s3
       - run:
           command: |
