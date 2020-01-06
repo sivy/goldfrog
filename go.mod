@@ -8,6 +8,7 @@ require (
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/gomarkdown/markdown v0.0.0-20191229055418-359dc4b9d66b
 	github.com/leekchan/gtf v0.0.0-20190214083521-5fba33c5b00b
+	github.com/mattn/go-mastodon v0.0.4 // indirect
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.6.1
