@@ -75,6 +75,10 @@ workflows:
       - publish-to-s3:
           requires:
             - build
+          filters:
+            branches:
+              only:
+                - master
       - publish-github-release:
           requires:
             - build
