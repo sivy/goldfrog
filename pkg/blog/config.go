@@ -14,9 +14,10 @@ type Config struct {
 
 	Services []map[string]string `json:"services" yaml:"services"`
 
-	PostsDir     string `json:"posts" yaml:"posts"`
-	TemplatesDir string `json:"templates" yaml:"templates"`
-	StaticDir    string `json:"static" yaml:"static"`
+	PostsDir     string `json:"postsdir" yaml:"postsdir"`
+	TemplatesDir string `json:"templatesdir" yaml:"templatesdir"`
+	StaticDir    string `json:"staticdir" yaml:"staticdir"`
+	UploadsDir   string `json:"uploadsdir" yaml:"uploadsdir"`
 
 	Signin struct {
 		Username string `yaml:"username"`
