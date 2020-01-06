@@ -151,26 +151,32 @@ func splitFile(source string) []string {
 }
 
 func getPostDate(dateStr string, filename string) (time.Time, error) {
+	if dateStr != "" {
+		date, err := dateparse.ParseAny(dateStr)
 
-	date, err := dateparse.ParseAny(dateStr)
-
-	if err == nil {
-		return date, nil
+		if err == nil {
+			return date, nil
+		}
+		log.Warn(err)
+		return time.Time{}, err
 	}
-	log.Warn(err)
+
+	log.Debug("No date found in header...")
 
 	pathRe := regexp.MustCompile(`^([\d]{4})-([\d]{2})-([\d]{2})-`)
 	r := pathRe.FindSubmatch([]byte(filename))
 	if len(r) == 0 {
-		return time.Now(), errors.New(fmt.Sprintf(
+		return time.Time{}, errors.New(fmt.Sprintf(
 			"Cannot get postdate from dateStr or filename: %s",
 			filename))
 	}
+
 	year := r[1]
 	month := r[2]
 	day := r[3]
 
 	dateStr = fmt.Sprintf("%s-%s-%s", year, month, day)
+	log.Debugf("Got dateStr: %s", dateStr)
 	return time.Parse("2006-01-02", dateStr)
 }
 
@@ -180,8 +186,9 @@ func getPostSlugFromFile(filename string) string {
 	if len(r) != 5 { // r[0] is the full string
 		return ""
 	}
-	fmt.Println(string(r[4]))
-	return string(r[4])
+	slug := string(r[4])
+	fmt.Println(slug)
+	return slug
 }
 
 func makePostSlug(title string) string {
