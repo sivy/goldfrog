@@ -26,7 +26,7 @@ func IndexPosts(postsDir string, dbFile string, verbose bool) {
 		PostsDirectory: postsDir,
 	}
 
-	files := repo.ListPostFiles()
+	files := repo.ListPosts()
 
 	var i = 0
 	for _, f := range files {

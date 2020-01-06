@@ -13,11 +13,22 @@ import (
 	"github.com/araddon/dateparse"
 )
 
-type PostsRepo struct {
+type PostsRepo interface {
+	ListPosts() []string
+	SavePost(p Post) error
+	// GetPost(ID string) error
+	DeletePost(p Post) error
+}
+
+type GitPostsRepo struct {
+	CheckoutDirectory string
+}
+
+type FilePostsRepo struct {
 	PostsDirectory string
 }
 
-func (repo *PostsRepo) ListPostFiles() []string {
+func (repo *FilePostsRepo) ListPosts() []string {
 	log.Debugf("listing files in %s", repo.PostsDirectory)
 
 	files := make([]string, 0)
@@ -31,7 +42,7 @@ func (repo *PostsRepo) ListPostFiles() []string {
 	return files
 }
 
-func (repo *PostsRepo) SavePostFile(post Post) error {
+func (repo *FilePostsRepo) SavePost(post Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
 		post.PostDate.Format("2006-01-02"),
@@ -50,7 +61,7 @@ func (repo *PostsRepo) SavePostFile(post Post) error {
 	return nil
 }
 
-func (repo *PostsRepo) DeletePostFile(post Post) error {
+func (repo *FilePostsRepo) DeletePost(post Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
 		post.PostDate.Format("2006-01-02"),

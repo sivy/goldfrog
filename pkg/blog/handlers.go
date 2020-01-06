@@ -297,7 +297,7 @@ func CreateNewPostFunc(
 		}
 
 		log.Debug(p)
-		err = repo.SavePostFile(p)
+		err = repo.SavePost(p)
 		if err != nil {
 			log.Errorf("Could not save post file: %v", err)
 		}
@@ -328,7 +328,6 @@ func CreateEditPostFunc(
 	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
 	log.Debug("Creating edit post handler")
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		if r.Method == "GET" {
 			log.Info("Rendering Edit Post form")
 
@@ -421,7 +420,7 @@ func CreateEditPostFunc(
 
 		log.Debug(post)
 
-		err = repo.SavePostFile(post)
+		err = repo.SavePost(post)
 		if err != nil {
 			log.Errorf("Could not save post file: %v", err)
 		}
