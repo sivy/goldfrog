@@ -25,7 +25,7 @@ func CreateIndexFunc(config Config, db *sql.DB, templatesDir string) http.Handle
 		log.Info("Serving index...")
 		log.Debug(templatesDir)
 
-		postOpts := GetPostOpts{Limit: 10}
+		postOpts := GetPostOpts{Limit: 20}
 		posts := GetPosts(db, postOpts)
 
 		log.Debugf("Found %d posts", len(posts))
@@ -60,6 +60,43 @@ func CreateIndexFunc(config Config, db *sql.DB, templatesDir string) http.Handle
 			ShowSlug:   false,
 			TextHeight: 10,
 			ShowExpand: true,
+		})
+
+		if err != nil {
+			log.Warnf("Error rendering: %v", err)
+		}
+	}
+}
+
+// CreateIndexFunc
+func CreateRssFunc(config Config, db *sql.DB, templatesDir string) http.HandlerFunc {
+	log.Debug("Creating rss handler")
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Info("Serving index...")
+		log.Debug(templatesDir)
+
+		postOpts := GetPostOpts{Limit: 10}
+		posts := GetPosts(db, postOpts)
+
+		log.Debugf("Found %d posts", len(posts))
+
+		t, err := getTemplate(templatesDir, "base/rss.xml")
+
+		if err != nil {
+			log.Errorf("Could not parse template: %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/xml")
+		w.Write([]byte(`<?xml version="1.0" encoding="utf-8" standalone="yes" ?>`))
+		err = t.ExecuteTemplate(w, "rss", struct {
+			Posts  []Post
+			Config Config
+		}{
+			Posts:  posts,
+			Config: config,
 		})
 
 		if err != nil {
@@ -119,8 +156,6 @@ func CreateArchiveYearMonthFunc(config Config, db *sql.DB, templatesDir string) 
 		log.Info("Serving archive year/month...")
 
 		archiveData := GetArchiveYearMonths(db)
-
-		log.Debugf("Found archiveDAta %v", archiveData)
 
 		t, err := getTemplate(templatesDir, "archive_years.html")
 
@@ -222,15 +257,18 @@ func CreateNewPostFunc(
 		file, handler, err := r.FormFile("postimage")
 		var hasImage bool
 		var imageUrl string
+		var imagePath string
 
 		if err == nil {
 			// there's an image
 			hasImage = true
 			defer file.Close()
 			log.Infof("File upload in progress...")
+
+			imagePath = filepath.Join(staticDir, "images", handler.Filename)
 			f, err := os.OpenFile(
-				filepath.Join(staticDir, "images", handler.Filename),
-				os.O_WRONLY|os.O_CREATE, 0777)
+				imagePath, os.O_WRONLY|os.O_CREATE, 0777)
+
 			if err != nil {
 				log.Error(err)
 				hasImage = false
@@ -499,10 +537,16 @@ func excerpter(args ...interface{}) template.HTML {
 	return template.HTML(s)
 }
 
+func htmlEscaper(args ...interface{}) string {
+	s := fmt.Sprintf("%s", args...)
+	return s
+}
+
 func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
 		"markdown": markDowner,
 		"excerpt":  excerpter,
+		"escape":   htmlEscaper,
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 

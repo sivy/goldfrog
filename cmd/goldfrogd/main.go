@@ -69,6 +69,7 @@ func runServer(
 			config, db, templatesDir))
 		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, db, templatesDir))
 		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db, templatesDir))
+		r.Mount("/feed.xml", blog.CreateRssFunc(config, db, templatesDir))
 
 		r.Mount("/new", blog.CreateNewPostFunc(config, db, templatesDir, repo, staticDir))
 		r.Mount(

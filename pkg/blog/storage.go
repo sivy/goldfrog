@@ -43,8 +43,8 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		SELECT id, slug, title, tags,
 		postdate, body FROM posts
 		ORDER BY datetime(postdate) DESC
-		LIMIT 20
-	`)
+		LIMIT ?
+	`, opts.Limit)
 
 	if err != nil {
 		log.Errorf("Could not load posts: %v", err)
