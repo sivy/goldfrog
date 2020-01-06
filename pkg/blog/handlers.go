@@ -522,6 +522,23 @@ func CreateSigninPageFunc(
 	}
 }
 
+func CreateSignoutPageFunc(
+	config Config, dbFile string, templatesDir string) http.HandlerFunc {
+	log.Debug("Creating signout handler")
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{
+			Name:    "goldfrog",
+			Value:   "",
+			Path:    "/",
+			Expires: time.Now().AddDate(-1, 0, 0),
+			// Secure: true,
+		})
+
+		redirect(w, templatesDir, "/")
+		return
+	}
+}
+
 func markDowner(args ...interface{}) template.HTML {
 	extensions := parser.CommonExtensions | parser.HardLineBreak
 	parser := parser.NewWithExtensions(extensions)

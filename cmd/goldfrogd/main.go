@@ -81,6 +81,7 @@ func runServer(
 		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, templatesDir, repo))
 
 		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile, templatesDir))
+		r.Mount("/signout", blog.CreateSignoutPageFunc(config, dbFile, templatesDir))
 		blog.FileServer(r, "/static", http.Dir(staticDir))
 	})
 
