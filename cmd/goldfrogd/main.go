@@ -71,6 +71,8 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "")
 	flag.Parse()
 
+	log.Printf("Using dbFile: %s", dbFile)
+
 	if showVersionLong {
 		fmt.Println(version)
 		return
@@ -161,7 +163,9 @@ func runServer(
 			config, db))
 		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, db))
 		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db))
+		r.Mount("/tag/{tag}", blog.CreateTagPageFunc(config, db))
 		r.Mount("/feed.xml", blog.CreateRssFunc(config, db))
+		r.Mount("/search", blog.CreateSearchPageFunc(config, db))
 
 		r.Mount("/new", blog.CreateNewPostFunc(config, db, repo))
 		r.Mount(

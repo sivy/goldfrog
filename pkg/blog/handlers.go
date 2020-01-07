@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -216,6 +217,108 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
+	log.Debug("Creating tag page handler")
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Info("Serving search results...")
+
+		isOwner := checkIsOwner(config, r)
+
+		var posts []Post
+		t, err := getTemplate(config.TemplatesDir, "post_list.html")
+
+		// postOpts := GetPostOpts{Limit: 10}
+		term := r.PostFormValue("s")
+		if term == "" {
+			term = r.URL.Query().Get("s")
+		}
+
+		if term == "" {
+			err = t.ExecuteTemplate(w, "base", struct {
+				Posts   []Post
+				Config  Config
+				Title   string
+				IsOwner bool
+			}{
+				Posts:   posts,
+				Config:  config,
+				Title:   fmt.Sprintf("No search term!"),
+				IsOwner: isOwner,
+			})
+			return
+		}
+		opts := GetPostOpts{
+			Title: term,
+			Body:  term,
+		}
+
+		posts = GetPosts(db, opts)
+		log.Debugf("found posts: %d", len(posts))
+
+		if err != nil {
+			log.Errorf("Could not parse template: %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		err = t.ExecuteTemplate(w, "base", struct {
+			Posts   []Post
+			Config  Config
+			Title   string
+			IsOwner bool
+		}{
+			Posts:   posts,
+			Config:  config,
+			Title:   fmt.Sprintf("Posts found for '%s'", term),
+			IsOwner: isOwner,
+		})
+
+		if err != nil {
+			log.Warnf("Error rendering: %v", err)
+		}
+	}
+}
+
+func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
+	log.Debug("Creating tag page handler")
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Info("Serving tag search...")
+
+		// postOpts := GetPostOpts{Limit: 10}
+		tag := chi.URLParam(r, "tag")
+
+		posts := GetTaggedPosts(db, tag)
+		log.Debugf("tagged posts: %d", len(posts))
+		t, err := getTemplate(config.TemplatesDir, "post_list.html")
+
+		if err != nil {
+			log.Errorf("Could not parse template: %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		isOwner := checkIsOwner(config, r)
+
+		err = t.ExecuteTemplate(w, "base", struct {
+			Posts   []Post
+			Config  Config
+			Title   string
+			IsOwner bool
+		}{
+			Posts:   posts,
+			Config:  config,
+			Title:   fmt.Sprintf("Posts tagged with '%s'", tag),
+			IsOwner: isOwner,
+		})
+
+		if err != nil {
+			log.Warnf("Error rendering: %v", err)
+		}
+	}
+}
+
 func CreateNewPostFunc(
 	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
 	log.Debug("Creating new post form handler")
@@ -297,6 +400,8 @@ func CreateNewPostFunc(
 		}
 
 		log.Debug(p)
+		p.Tags = updateTags(p.Body, p.Tags)
+
 		err = repo.SavePostFile(p)
 		if err != nil {
 			log.Errorf("Could not save post file: %v", err)
@@ -307,18 +412,6 @@ func CreateNewPostFunc(
 			log.Errorf("Could not save post: %v", err)
 		}
 
-		// t, err := getTemplate(config.TemplatesDir, "base/redirect.html")
-		// if err != nil {
-		// 	log.Errorf("Could not get template: %v", err)
-		// }
-
-		// err = t.ExecuteTemplate(w, "redirect", struct {
-		// 	Config Config
-		// 	Url    string
-		// }{
-		// 	Config: config,
-		// 	Url:    "/",
-		// })
 		redirect(w, config.TemplatesDir, "/")
 		return
 	}
@@ -419,6 +512,8 @@ func CreateEditPostFunc(
 		post.Tags = strings.Split(tags, ",")
 		post.Body = strings.TrimSpace(body)
 
+		post.Tags = updateTags(post.Body, post.Tags)
+
 		log.Debug(post)
 
 		err = repo.SavePostFile(post)
@@ -446,10 +541,16 @@ func CreateDeletePostFunc(
 
 		postID := r.PostFormValue("postID")
 
-		err := DeletePost(db, postID)
+		post, err := GetPost(db, postID)
 
+		err = DeletePost(db, postID)
 		if err != nil {
 			log.Errorf("Could not delete post: %v", err)
+		}
+
+		err = repo.DeletePostFile(post)
+		if err != nil {
+			log.Errorf("Could not delete post file: %v", err)
 		}
 
 		redirect(w, config.TemplatesDir, "/")
@@ -460,10 +561,6 @@ func CreateSigninPageFunc(
 	config Config, dbFile string) http.HandlerFunc {
 	log.Debug("Creating signin handler")
 	return func(w http.ResponseWriter, r *http.Request) {
-		// templatePaths := []string{
-		// 	filepath.Join(templatesDir, "default.html"),
-		// 	filepath.Join(templatesDir, "signin/*.html"),
-		// }
 		if r.Method == "POST" {
 			log.Infof("Handle post ")
 			user := r.PostFormValue("username")
@@ -482,10 +579,12 @@ func CreateSigninPageFunc(
 					})
 				}
 			}
+
 			t, err := getTemplate(config.TemplatesDir, "base/redirect.html")
 			if err != nil {
 				log.Errorf("Could not get template: %v", err)
 			}
+
 			err = t.ExecuteTemplate(w, "redirect", struct {
 				Config Config
 				Url    string
@@ -557,11 +656,19 @@ func htmlEscaper(args ...interface{}) string {
 	return s
 }
 
+func hashtagger(args ...interface{}) template.HTML {
+	s := fmt.Sprintf("%s", args...)
+	re := regexp.MustCompile(`([\s])#([[:alnum:]]+)\b`)
+	s = re.ReplaceAllString(s, "$1<a href=\"/tag/$2\">#$2</a>")
+	return template.HTML(s)
+}
+
 func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
 		"markdown": markDowner,
 		"excerpt":  excerpter,
 		"escape":   htmlEscaper,
+		"hashtags": hashtagger,
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 
@@ -619,4 +726,17 @@ func redirect(w http.ResponseWriter, templatesDir string, url string) {
 	}{
 		Url: url,
 	})
+}
+
+func updateTags(body string, tags []string) []string {
+	fmt.Printf("Start tags: %v", tags)
+	hashtags := getHashTags(body)
+	fmt.Printf("Found hashtags: %v", hashtags)
+	for _, t := range hashtags {
+		if !tagInTags(t, tags) {
+			tags = append(tags, t)
+		}
+	}
+	fmt.Printf("End tags: %v", tags)
+	return tags
 }

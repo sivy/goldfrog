@@ -2,6 +2,7 @@ package blog
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -37,17 +38,58 @@ var dateFmts = [...]string{
 func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 	log := logrus.New()
 
+	var whereClauses = make(map[string]string)
+
+	if opts.Title != "" {
+		whereClauses["title"] = "%" + opts.Title + "%"
+	}
+	if opts.Body != "" {
+		whereClauses["body"] = "%" + opts.Body + "%"
+	}
+
+	var whereColumns []string
+	var whereValues []string
+
+	for column, value := range whereClauses {
+		whereColumns = append(whereColumns, column)
+		whereValues = append(whereValues, value)
+	}
+
 	var posts = make([]Post, 0)
 
-	rows, err := db.Query(`
-		SELECT id, slug, title, tags,
-		postdate, body FROM posts
-		ORDER BY datetime(postdate) DESC
-		LIMIT ?
-	`, opts.Limit)
+	sql := "SELECT id, slug, title, tags, postdate, body FROM posts"
+	if len(whereColumns) > 0 {
+		sql += " WHERE "
+		for i, c := range whereColumns {
+			sql += fmt.Sprintf("%s like ?", c)
+			if i+1 < len(whereColumns) {
+				sql += " OR "
+			}
+		}
+	}
+	sql += " ORDER BY datetime(postdate) DESC LIMIT ?"
+
+	if opts.Limit == 0 {
+		opts.Limit = 100
+	}
+
+	whereValues = append(
+		whereValues, fmt.Sprintf("%d", opts.Limit))
+
+	args := make([]interface{}, len(whereValues))
+	for i, id := range whereValues {
+		args[i] = id
+	}
+
+	rows, err := db.Query(sql, args...)
 
 	if err != nil {
 		log.Errorf("Could not load posts: %v", err)
+		return posts
+	}
+	if rows.Err() != nil {
+		log.Errorf("Could not load posts: %v", err)
+		return posts
 	}
 
 	for rows.Next() {
@@ -60,6 +102,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
 		if err != nil {
 			log.Error(err)
+			return posts
 		}
 		var date time.Time
 		var err error
@@ -73,8 +116,75 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 			p.PostDate = date
 		}
 
-		p.Tags = strings.Split(tags, ", ")
+		p.Tags = splitTags(tags)
 
+		p.Body = body
+
+		posts = append(posts, p)
+	}
+	return posts
+}
+
+func GetTaggedPosts(db *sql.DB, tag string) []Post {
+	log := logrus.New()
+	var posts = make([]Post, 0)
+
+	var count int
+	row := db.QueryRow("SELECT count(*) FROM posts WHERE tags like '%?%'")
+	err := row.Scan(&count)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	rows, err := db.Query(`
+		SELECT id, slug, title, tags, postdate, body FROM posts
+		WHERE tags like ?
+		ORDER BY datetime(postdate) DESC
+	`, "%"+tag+"%")
+
+	if err != nil {
+		log.Errorf("Could not load posts: %v", err)
+	}
+	if rows.Err() != nil {
+		log.Error(rows.Err())
+	}
+
+	for rows.Next() {
+		var p Post
+		var body string
+		var tags string
+		var dateStr string
+
+		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
+		if err != nil {
+			log.Error(err)
+		}
+		fmt.Printf("%v", p)
+
+		// re := regexp.MustCompile(
+		// 	fmt.Sprintf("(?:\\A|[\\W])(%s)(?:\\W|\\z)", tag))
+
+		// log.Debugf("checking tags: %s for tag: %s", tags, tag)
+		// match := re.MatchString(tags)
+		// if !match {
+		// 	log.Warnf("tag %s not found specifically in %s", tag, tags)
+		// 	continue
+		// }
+
+		var date time.Time
+		var err error
+
+		date, err = dateparse.ParseAny(dateStr)
+
+		if err != nil {
+			log.Errorf("Cannot parse date from %s", dateStr)
+			p.PostDate = time.Now()
+		} else {
+			p.PostDate = date
+		}
+
+		p.Tags = splitTags(tags)
 		p.Body = body
 
 		posts = append(posts, p)
@@ -119,7 +229,7 @@ func GetPost(db *sql.DB, postID string) (Post, error) {
 			p.PostDate = date
 		}
 
-		p.Tags = strings.Split(tags, ", ")
+		p.Tags = splitTags(tags)
 
 		p.Body = body
 	}
@@ -165,7 +275,7 @@ func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
 			p.PostDate = date
 		}
 
-		p.Tags = strings.Split(tags, ", ")
+		p.Tags = splitTags(tags)
 
 		p.Body = body
 	}
@@ -252,7 +362,7 @@ func GetArchivePosts(db *sql.DB, year string, month string) []Post {
 			p.PostDate = date
 		}
 
-		p.Tags = strings.Split(tags, ", ")
+		p.Tags = splitTags(tags)
 
 		p.Body = body
 

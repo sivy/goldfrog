@@ -121,16 +121,26 @@ func ParseFile(path string) (Post, error) {
 	post.PostDate = date
 	post.Title = title
 
+	body = strings.TrimSpace(body)
+	post.Body = body
+
 	tagStr := GetFrontMatterItem(frontMatter, "tags")
 	tagList := strings.Split(tagStr, ",")
 	var tags []string
 	for _, t := range tagList {
 		tags = append(tags, strings.TrimSpace(t))
 	}
-	post.Tags = tags
 
-	body = strings.TrimSpace(body)
-	post.Body = body
+	// add post hashtags, cause that's cool
+	hashtags := getHashTags(post.Body)
+	fmt.Printf("Found hashtags: %v", hashtags)
+	for _, t := range hashtags {
+		if !tagInTags(t, tags) {
+			tags = append(tags, t)
+		}
+	}
+
+	post.Tags = tags
 
 	// log.Debugf("%q", post)
 
@@ -189,6 +199,36 @@ func getPostSlugFromFile(filename string) string {
 	slug := string(r[4])
 	fmt.Println(slug)
 	return slug
+}
+
+func tagInTags(tag string, tags []string) bool {
+	for _, t := range tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+func splitTags(tags string) []string {
+	tagList1 := strings.Split(tags, ",")
+	var tagList2 []string
+	for _, t := range tagList1 {
+		tagList2 = append(tagList2, strings.TrimSpace(t))
+	}
+	return tagList2
+}
+
+func getHashTags(s string) []string {
+	re := regexp.MustCompile("#[[:alnum:]]+")
+	res := re.FindAll([]byte(s), -1)
+	fmt.Printf("res: %v", res)
+	var hashtags []string
+	for _, b := range res {
+		fmt.Println(b)
+		hashtags = append(hashtags, strings.Trim(string(b), "#"))
+	}
+	return hashtags
 }
 
 func makePostSlug(title string) string {
