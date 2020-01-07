@@ -41,8 +41,8 @@ func TestParseFile(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test post", post.Title)
-	assert.Equal(t, []string{"test", "post"}, post.Tags)
-	assert.Equal(t, "Post body", post.Body)
+	assert.Equal(t, []string{"test", "post", "hashtag"}, post.Tags)
+	assert.Equal(t, "Post body #hashtag", post.Body)
 }
 
 func TestGetDateWithGoodDateStr(t *testing.T) {
@@ -98,4 +98,14 @@ func TestMakePostSlug(t *testing.T) {
 	title = "this is 1 test?"
 	slug = makePostSlug(title)
 	assert.Equal(t, "this-is-1-test", slug)
+}
+
+func TestGetHashTags(t *testing.T) {
+	s := `this is a post about #testing and #golang`
+	res := getHashTags(s)
+	assert.NotEmpty(t, res)
+	assert.Equal(t, []string{"testing", "golang"}, res)
+
+	res = getHashTags("")
+	assert.Empty(t, res)
 }
