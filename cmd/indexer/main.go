@@ -32,15 +32,15 @@ func runWatcher(postsDir string, dbFile string) {
 				if !ok {
 					return
 				}
-				log.Println("event:", event)
+				log.Debugf("event:", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("modified file:", event.Name)
+					log.Debugf("modified file:", event.Name)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				log.Errorf("%s", err)
 			}
 		}
 	}()
@@ -85,7 +85,6 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Indexing %s", postsDir)
-
+	log.Infof("Indexing %s", postsDir)
 	blog.IndexPosts(postsDir, dbFile, verbose)
 }
