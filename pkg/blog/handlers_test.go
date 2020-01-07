@@ -11,12 +11,10 @@ import (
 func TestFuncHashTags(t *testing.T) {
 	s := `this is a [post](#foo) about #testing and #golang`
 	res := hashtagger(s)
-	fmt.Printf("res: %v", res)
 	assert.NotEmpty(t, res)
 
 	s = "(#DIY-ing)"
 	res = hashtagger(s)
-	fmt.Printf("res: %v", res)
 	assert.NotEmpty(t, res)
 
 }
@@ -26,13 +24,10 @@ func TestMarkdownHashTags(t *testing.T) {
 	html := markDowner(s)
 
 	res := hashtagger(html)
-
-	fmt.Printf("res: %v", res)
 	assert.NotEmpty(t, res)
 
 	s = "(#DIY-ing)"
 	res = hashtagger(s)
-	fmt.Printf("res: %v", res)
 	assert.NotEmpty(t, res)
 
 }

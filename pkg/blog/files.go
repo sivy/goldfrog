@@ -222,10 +222,8 @@ func splitTags(tags string) []string {
 func getHashTags(s string) []string {
 	re := regexp.MustCompile("#[[:alnum:]]+")
 	res := re.FindAll([]byte(s), -1)
-	fmt.Printf("res: %v", res)
 	var hashtags []string
 	for _, b := range res {
-		fmt.Println(b)
 		hashtags = append(hashtags, strings.Trim(string(b), "#"))
 	}
 	return hashtags
