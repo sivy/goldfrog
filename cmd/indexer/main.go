@@ -32,9 +32,9 @@ func runWatcher(postsDir string, dbFile string) {
 				if !ok {
 					return
 				}
-				log.Debugf("event:", event)
+				log.Debugf("event: %s", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Debugf("modified file:", event.Name)
+					log.Debugf("modified file: %s", event.Name)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
