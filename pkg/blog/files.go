@@ -209,7 +209,7 @@ func getPostSlugFromFile(filename string) string {
 
 func tagInTags(tag string, tags []string) bool {
 	for _, t := range tags {
-		if t == tag {
+		if strings.ToLower(t) == strings.ToLower(tag) {
 			return true
 		}
 	}
@@ -221,7 +221,7 @@ func splitTags(tags string) []string {
 	tagList1 := re.Split(tags, -1)
 	var tagList2 []string
 	for _, t := range tagList1 {
-		tagList2 = append(tagList2, strings.TrimSpace(t))
+		tagList2 = append(tagList2, strings.ToLower(strings.TrimSpace(t)))
 	}
 	return tagList2
 }
@@ -231,7 +231,8 @@ func getHashTags(s string) []string {
 	res := re.FindAll([]byte(s), -1)
 	var hashtags []string
 	for _, b := range res {
-		hashtags = append(hashtags, strings.Trim(string(b), "#"))
+		hashtags = append(hashtags, strings.ToLower(
+			strings.Trim(string(b), "#")))
 	}
 	return hashtags
 }
