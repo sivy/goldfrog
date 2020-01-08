@@ -13,6 +13,10 @@ import (
 	"github.com/araddon/dateparse"
 )
 
+const (
+	TAGLISTRE string = `[\s]*,[\s]*`
+)
+
 type PostsRepo struct {
 	PostsDirectory string
 }
@@ -125,14 +129,16 @@ func ParseFile(path string) (Post, error) {
 	post.Body = body
 
 	tagStr := GetFrontMatterItem(frontMatter, "tags")
-	tagList := strings.Split(tagStr, ",")
+	tagList := splitTags(tagStr)
 	var tags []string
 	for _, t := range tagList {
 		tags = append(tags, strings.TrimSpace(t))
 	}
 
 	// add post hashtags, cause that's cool
-	hashtags := getHashTags(post.Body)
+	processedBody := fmt.Sprintf("%s", markDowner(post.Body))
+	hashtags := getHashTags(processedBody)
+
 	fmt.Printf("Found hashtags: %v", hashtags)
 	for _, t := range hashtags {
 		if !tagInTags(t, tags) {
@@ -211,7 +217,8 @@ func tagInTags(tag string, tags []string) bool {
 }
 
 func splitTags(tags string) []string {
-	tagList1 := strings.Split(tags, ",")
+	re := regexp.MustCompile(TAGLISTRE)
+	tagList1 := re.Split(tags, -1)
 	var tagList2 []string
 	for _, t := range tagList1 {
 		tagList2 = append(tagList2, strings.TrimSpace(t))

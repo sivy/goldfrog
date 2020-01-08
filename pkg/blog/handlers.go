@@ -112,6 +112,7 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		postSlug := chi.URLParam(r, "slug")
 
 		post, err := GetPostBySlug(db, postSlug)
+
 		log.Debugf("Found post: %s", post.Title)
 
 		if err != nil {
@@ -384,6 +385,8 @@ func CreateNewPostFunc(
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
 
+		body = strings.Replace(body, "\r\n", "\n", -1)
+
 		if hasImage {
 			body = strings.Replace(
 				body, "[image]",
@@ -393,7 +396,7 @@ func CreateNewPostFunc(
 
 		p := Post{
 			Title:    title,
-			Tags:     strings.Split(tags, ","),
+			Tags:     splitTags(tags),
 			Body:     body,
 			Slug:     makePostSlug(title),
 			PostDate: time.Now(),
@@ -510,6 +513,8 @@ func CreateEditPostFunc(
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
 
+		body = strings.Replace(body, "\r\n", "\n", -1)
+
 		if hasImage {
 			body = strings.Replace(
 				body, "[image]",
@@ -518,10 +523,11 @@ func CreateEditPostFunc(
 		}
 
 		post.Title = title
-		post.Tags = strings.Split(tags, ",")
+		post.Tags = splitTags(tags)
 		post.Body = strings.TrimSpace(body)
 
-		post.Tags = updateTags(post.Body, post.Tags)
+		processedBody := fmt.Sprintf("%s", markDowner(post.Body))
+		post.Tags = updateTags(processedBody, post.Tags)
 
 		log.Debug(post)
 
@@ -535,7 +541,7 @@ func CreateEditPostFunc(
 			log.Errorf("Could not save post: %v", err)
 		}
 
-		redirect(w, config.TemplatesDir, "/")
+		redirect(w, config.TemplatesDir, post.Url())
 		return
 	}
 }
@@ -646,11 +652,12 @@ func CreateSignoutPageFunc(
 }
 
 func markDowner(args ...interface{}) template.HTML {
-	extensions := parser.CommonExtensions | parser.HardLineBreak
+	extensions := parser.CommonExtensions | parser.HeadingIDs
 	parser := parser.NewWithExtensions(extensions)
-
+	content := fmt.Sprintf("%s", args...)
 	s := markdown.ToHTML(
-		[]byte(fmt.Sprintf("%s", args...)), parser, nil)
+		[]byte(content), parser, nil)
+
 	return template.HTML(s)
 }
 
@@ -667,7 +674,7 @@ func htmlEscaper(args ...interface{}) string {
 
 func hashtagger(args ...interface{}) template.HTML {
 	s := fmt.Sprintf("%s", args...)
-	re := regexp.MustCompile(`([\s])#([[:alnum:]]+)\b`)
+	re := regexp.MustCompile(`([\s\>])#([[:alnum:]]+)\b`)
 	s = re.ReplaceAllString(s, "$1<a href=\"/tag/$2\">#$2</a>")
 	return template.HTML(s)
 }
@@ -738,14 +745,14 @@ func redirect(w http.ResponseWriter, templatesDir string, url string) {
 }
 
 func updateTags(body string, tags []string) []string {
-	fmt.Printf("Start tags: %v", tags)
+	log.Debugf("Start tags: %q", tags)
 	hashtags := getHashTags(body)
-	fmt.Printf("Found hashtags: %v", hashtags)
+	log.Debugf("Found hashtags: %v", hashtags)
 	for _, t := range hashtags {
 		if !tagInTags(t, tags) {
 			tags = append(tags, t)
 		}
 	}
-	fmt.Printf("End tags: %v", tags)
+	log.Debugf("End tags: %v", tags)
 	return tags
 }

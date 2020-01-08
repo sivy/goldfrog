@@ -95,7 +95,7 @@ func statusMessageFromPost(post Post, maxLength int) string {
 }
 
 func stripHTML(body string) string {
-	extensions := parser.CommonExtensions | parser.HardLineBreak
+	extensions := parser.CommonExtensions
 	parser := parser.NewWithExtensions(extensions)
 
 	s := markdown.ToHTML([]byte(body), parser, nil)

@@ -118,6 +118,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 
 		p.Tags = splitTags(tags)
 
+		body = strings.Replace(body, "\r\n", "\n", -1)
 		p.Body = body
 
 		posts = append(posts, p)
@@ -160,17 +161,7 @@ func GetTaggedPosts(db *sql.DB, tag string) []Post {
 		if err != nil {
 			log.Error(err)
 		}
-		fmt.Printf("%v", p)
-
-		// re := regexp.MustCompile(
-		// 	fmt.Sprintf("(?:\\A|[\\W])(%s)(?:\\W|\\z)", tag))
-
-		// log.Debugf("checking tags: %s for tag: %s", tags, tag)
-		// match := re.MatchString(tags)
-		// if !match {
-		// 	log.Warnf("tag %s not found specifically in %s", tag, tags)
-		// 	continue
-		// }
+		// fmt.Printf("%v", p)
 
 		var date time.Time
 		var err error
@@ -185,6 +176,8 @@ func GetTaggedPosts(db *sql.DB, tag string) []Post {
 		}
 
 		p.Tags = splitTags(tags)
+
+		body = strings.Replace(body, "\r\n", "\n", -1)
 		p.Body = body
 
 		posts = append(posts, p)
@@ -231,6 +224,7 @@ func GetPost(db *sql.DB, postID string) (Post, error) {
 
 		p.Tags = splitTags(tags)
 
+		body = strings.Replace(body, "\r\n", "\n", -1)
 		p.Body = body
 	}
 	return p, nil
@@ -277,6 +271,7 @@ func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
 
 		p.Tags = splitTags(tags)
 
+		body = strings.Replace(body, "\r\n", "\n", -1)
 		p.Body = body
 	}
 	return p, nil
