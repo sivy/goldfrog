@@ -412,6 +412,15 @@ func CreateNewPostFunc(
 			log.Errorf("Could not save post: %v", err)
 		}
 
+		crossPosters := MakeCrossPosters(config)
+
+		if r.PostFormValue("twitter") == "on" {
+			posted_url := crossPosters["twitter"].SendPost(p, false)
+			if posted_url != "" {
+				log.Debugf("Posted message")
+			}
+		}
+
 		redirect(w, config.TemplatesDir, "/")
 		return
 	}

@@ -28,4 +28,11 @@ type Config struct {
 		Location string `yaml:"location"`
 		Port     string `yaml:"port"`
 	} `yaml:"server"`
+
+	Twitter struct {
+		ClientKey    string `yaml:"clientkey"`
+		ClientSecret string `yaml:"clientsecret"`
+		AccessKey    string `yaml:"acceskey"`
+		AccessSecret string `yaml:"accessecret"`
+	} `yaml:"twitter"`
 }
