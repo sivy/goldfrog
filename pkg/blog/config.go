@@ -50,8 +50,9 @@ type Config struct {
 
 	Mastodon struct {
 		Site         string `yaml:"site"`
-		ClientKey    string `yaml:"clientkey"`
+		ClientID     string `yaml:"clientid"`
 		ClientSecret string `yaml:"clientsecret"`
+		AccessToken  string `yaml:"accesstoken"`
 		UserEmail    string `yaml:"useremail"`
 		UserPassword string `yaml:"userpassword"`
 	} `yaml:"mastodon"`

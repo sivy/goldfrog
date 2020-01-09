@@ -137,7 +137,9 @@ But who has any right to find fault with a man who chooses to enjoy a pleasure t
 has no annoying consequences, or one who avoids a pain that produces no resultant
 pleasure?`
 
-	output := makeMicroMessage(source, 280, title, link)
+	output := makeMicroMessage(source, 280, title, link, []string{"tag1", "tag2"})
 	assert.Contains(t, output, title+"\n\n")
 	assert.Contains(t, output, "\n\n"+link)
+	assert.Contains(t, output, "#tag1 #tag2")
+	// assert.Nil(t, output)
 }

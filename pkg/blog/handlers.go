@@ -367,7 +367,7 @@ func CreateNewPostFunc(
 			defer file.Close()
 			log.Infof("File upload in progress...")
 
-			imagePath = filepath.Join(config.UploadsDir, "images", handler.Filename)
+			imagePath = filepath.Join(config.UploadsDir, handler.Filename)
 			f, err := os.OpenFile(
 				imagePath, os.O_WRONLY|os.O_CREATE, 0777)
 
@@ -377,7 +377,8 @@ func CreateNewPostFunc(
 			} else {
 				defer f.Close()
 				io.Copy(f, file)
-				imageUrl = filepath.Join("/uploads", handler.Filename)
+				imageUrl = strings.Join([]string{
+					config.Blog.Url, "uploads", handler.Filename}, "/")
 			}
 		}
 
@@ -418,9 +419,16 @@ func CreateNewPostFunc(
 		crossPosters := MakeCrossPosters(config)
 
 		if r.PostFormValue("twitter") == "on" {
-			posted_url := crossPosters["twitter"].SendPost(p, false)
-			if posted_url != "" {
-				log.Debugf("Posted message")
+			postedUrl := crossPosters["twitter"].SendPost(p, false)
+			if postedUrl != "" {
+				log.Infof("Posted twtiter message: %s", postedUrl)
+			}
+		}
+
+		if r.PostFormValue("mastodon") == "on" {
+			postedUrl := crossPosters["mastodon"].SendPost(p, false)
+			if postedUrl != "" {
+				log.Infof("Posted mastodon message: %s", postedUrl)
 			}
 		}
 
@@ -503,7 +511,8 @@ func CreateEditPostFunc(
 			} else {
 				defer f.Close()
 				io.Copy(f, file)
-				imageUrl = filepath.Join("/static/images", handler.Filename)
+				imageUrl = strings.Join([]string{
+					config.Blog.Url, "uploads", handler.Filename}, "/")
 			}
 		} else {
 			log.Error(err)
