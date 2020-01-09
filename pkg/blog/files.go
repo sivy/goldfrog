@@ -249,25 +249,48 @@ func makePostSlug(title string) string {
 }
 
 func makeMicroMessage(
-	source string, length int, withTitle string, withLink string) string {
+	source string, length int, withTitle string,
+	withLink string, withTags []string) string {
 	/*
 		<Title optional
 
 		><Body
 
+		><Tags optional
+
 		><link>
 	*/
+	source = stripHTML(markDowner(source))
+
 	if withTitle != "" {
 		withTitle += "\n\n"
 	}
 
 	if withLink != "" {
 		withLink = "\n\n" + withLink
+
 	}
+
+	var fmtTagStr string
+	if len(withTags) != 0 {
+		var fmtTags []string
+		for _, t := range withTags {
+			if t == "" {
+				continue
+			}
+			if regexp.MustCompile("#" + t).MatchString(source) {
+				continue
+			}
+			fmtTags = append(fmtTags, fmt.Sprintf("#%s", t))
+		}
+		fmtTagStr = strings.Join(fmtTags, " ")
+		fmtTagStr = "\n\n" + fmtTagStr
+	}
+
 	// establish available chars for body
 	// length - len(title)
 	//        - len(blog.url + post.url)
-	availableChars := length - len(withTitle) - len(withLink)
+	availableChars := length - len(withTitle) - len(withLink) - len(fmtTagStr)
 
 	// split paras
 	sourceParas := strings.Split(source, "\n\n")
@@ -288,5 +311,5 @@ func makeMicroMessage(
 	}
 	// find closes para that fits in available length
 
-	return withTitle + messageBody + withLink
+	return withTitle + messageBody + fmtTagStr + withLink
 }

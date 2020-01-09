@@ -47,4 +47,13 @@ type Config struct {
 		AccessKey    string `yaml:"acceskey"`
 		AccessSecret string `yaml:"accessecret"`
 	} `yaml:"twitter"`
+
+	Mastodon struct {
+		Site         string `yaml:"site"`
+		ClientID     string `yaml:"clientid"`
+		ClientSecret string `yaml:"clientsecret"`
+		AccessToken  string `yaml:"accesstoken"`
+		UserEmail    string `yaml:"useremail"`
+		UserPassword string `yaml:"userpassword"`
+	} `yaml:"mastodon"`
 }
