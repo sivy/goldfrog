@@ -689,14 +689,13 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 
-	t, err := t.ParseFiles(
+	t, err := t.ParseGlob(filepath.Join(templatesDir, "base/*.html"))
+	t, err = t.ParseFiles(
 		filepath.Join(templatesDir, name),
 	)
 	if err != nil {
 		return t, err
 	}
-
-	t, err = t.ParseGlob(filepath.Join(templatesDir, "base/*.html"))
 
 	if err != nil {
 		return t, err

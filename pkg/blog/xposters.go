@@ -44,21 +44,6 @@ func (tp *TwitterPoster) SendPost(post Post, linkOnly bool) string {
 	content = makeMicroMessage(
 		content, 280, post.Title, tp.Config.Blog.Url+post.Url())
 
-	// if linkOnly {
-	// 	content = fmt.Sprintf(
-	// 		"%s\n\n%s",
-	// 		post.Title,
-	// 		filepath.Join(tp.Config.Blog.Url, post.Url()),
-	// 	)
-	// } else {
-	// 	content = fmt.Sprintf(
-	// 		"%s: %s\n\n%s",
-	// 		post.Title,
-	// 		statusMessageFromPost(post, 180),
-	// 		tp.Config.Blog.Url+post.Url(),
-	// 	)
-	// }
-
 	tweet, _, err := client.Statuses.Update(
 		content, &twitter.StatusUpdateParams{})
 

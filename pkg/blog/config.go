@@ -12,7 +12,19 @@ type Config struct {
 		Meta map[string]string `json:"meta" yaml:"meta"`
 	} `json:"blog" yaml:"blog"`
 
-	Services []map[string]string `json:"services" yaml:"services"`
+	Services []struct {
+		ID    string `yaml:"id"`
+		Name  string `yaml:"name"`
+		Link  string `yaml:"link"`
+		Class string `yaml:"class"`
+		Icon  string `yaml:"icon"`
+	} `json:"services" yaml:"services"`
+
+	Links []struct {
+		Name  string `yaml:"name"`
+		Link  string `yaml:"link"`
+		Class string `yaml:"class"`
+	} `json:"links" yaml:"links"`
 
 	PostsDir     string `json:"postsdir" yaml:"postsdir"`
 	TemplatesDir string `json:"templatesdir" yaml:"templatesdir"`
