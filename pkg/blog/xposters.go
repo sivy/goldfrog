@@ -2,7 +2,6 @@ package blog
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
@@ -38,20 +37,27 @@ func (tp *TwitterPoster) SendPost(post Post, linkOnly bool) string {
 
 	var content string
 
-	if linkOnly {
-		content = fmt.Sprintf(
-			"%s\n\n%s",
-			post.Title,
-			filepath.Join(tp.Config.Blog.Url, post.Url()),
-		)
-	} else {
-		content = fmt.Sprintf(
-			"%s: %s\n\n%s",
-			post.Title,
-			statusMessageFromPost(post, 180),
-			tp.Config.Blog.Url+post.Url(),
-		)
+	if !linkOnly {
+		content = post.Body
 	}
+
+	content = makeMicroMessage(
+		content, 280, post.Title, tp.Config.Blog.Url+post.Url())
+
+	// if linkOnly {
+	// 	content = fmt.Sprintf(
+	// 		"%s\n\n%s",
+	// 		post.Title,
+	// 		filepath.Join(tp.Config.Blog.Url, post.Url()),
+	// 	)
+	// } else {
+	// 	content = fmt.Sprintf(
+	// 		"%s: %s\n\n%s",
+	// 		post.Title,
+	// 		statusMessageFromPost(post, 180),
+	// 		tp.Config.Blog.Url+post.Url(),
+	// 	)
+	// }
 
 	tweet, _, err := client.Statuses.Update(
 		content, &twitter.StatusUpdateParams{})
@@ -94,11 +100,12 @@ func statusMessageFromPost(post Post, maxLength int) string {
 	return plaintext[:maxLength]
 }
 
-func stripHTML(body string) string {
+func stripHTML(args ...interface{}) string {
+	content := fmt.Sprintf("%s", args...)
 	extensions := parser.CommonExtensions
 	parser := parser.NewWithExtensions(extensions)
 
-	s := markdown.ToHTML([]byte(body), parser, nil)
+	s := markdown.ToHTML([]byte(content), parser, nil)
 
 	p := bluemonday.StrictPolicy()
 	plaintext := p.Sanitize(string(s))

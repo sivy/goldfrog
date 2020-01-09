@@ -681,10 +681,11 @@ func hashtagger(args ...interface{}) template.HTML {
 
 func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
-		"markdown": markDowner,
-		"excerpt":  excerpter,
-		"escape":   htmlEscaper,
-		"hashtags": hashtagger,
+		"markdown":  markDowner,
+		"excerpt":   excerpter,
+		"escape":    htmlEscaper,
+		"hashtags":  hashtagger,
+		"striphtml": stripHTML,
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 
