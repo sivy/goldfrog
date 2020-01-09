@@ -19,81 +19,6 @@ var version string // set in linker with ldflags -X main.version=
 
 var log = logrus.New()
 
-// exists returns whether the given file or directory exists
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, err
-}
-
-func loadConfig(configPath string) blog.Config {
-	viper.AddConfigPath(configPath)
-	viper.ReadInConfig()
-	var config blog.Config
-	viper.Unmarshal(&config)
-	log.Debugf("services: %v", config.Services)
-	return config
-}
-
-func runServer(
-	config blog.Config, dbFile string, templatesDir string,
-	postsDir string, staticDir string) {
-	// TODO: config or args with db location and posts dir
-
-	db, err := blog.GetDb(dbFile)
-	if err != nil {
-		log.Fatalf("Could not get db connection: %v", err)
-	}
-
-	repo := blog.PostsRepo{
-		PostsDirectory: postsDir,
-	}
-
-	r := chi.NewRouter()
-
-	r.Use(
-		middleware.RequestID,
-		middleware.StripSlashes,
-		middleware.Logger,
-		middleware.Recoverer,
-	)
-
-	r.Route("/", func(r chi.Router) {
-		r.Mount("/", blog.CreateIndexFunc(config, db, templatesDir))
-		r.Mount("/{year}/{month}/{slug}", blog.CreatePostPageFunc(
-			config, db, templatesDir))
-		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, db, templatesDir))
-		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db, templatesDir))
-
-		r.Mount("/new", blog.CreateNewPostFunc(config, db, templatesDir, repo, staticDir))
-		r.Mount(
-			"/edit/{postID}",
-			blog.CreateEditPostFunc(config, db, templatesDir, repo, staticDir))
-		r.Mount(
-			"/edit",
-			blog.CreateEditPostFunc(config, db, templatesDir, repo, staticDir))
-		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, templatesDir, repo))
-
-		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile, templatesDir))
-		blog.FileServer(r, "/static", http.Dir(staticDir))
-	})
-
-	loc := fmt.Sprintf(fmt.Sprintf(
-		"%s:%s", config.Server.Location,
-		config.Server.Port))
-
-	log.Info("=====================================")
-	log.Infof("Starting GoldFrog on %s", loc)
-	log.Info("=====================================")
-
-	http.ListenAndServe(loc, r)
-}
-
 func main() {
 	log.SetLevel(logrus.DebugLevel)
 
@@ -101,6 +26,7 @@ func main() {
 	var postsDir string
 	var templatesDir string
 	var staticDir string
+	var uploadsDir string
 	var dbFile string
 	var showVersionLong bool
 	var showVersion bool
@@ -129,7 +55,12 @@ func main() {
 	flag.StringVar(
 		&staticDir, "static_dir",
 		goldfrogHome+"/static",
-		"Location of static resourcs to be served at /static")
+		"Location of static resources to be served at /static")
+
+	flag.StringVar(
+		&uploadsDir, "uploads_dir",
+		goldfrogHome+"/uploads",
+		"Location of directory to store uploaded files to be served at /uploads")
 
 	flag.StringVar(
 		&dbFile, "db",
@@ -139,6 +70,8 @@ func main() {
 	flag.BoolVar(&showVersionLong, "version-long", false, "")
 	flag.BoolVar(&showVersion, "version", false, "")
 	flag.Parse()
+
+	log.Printf("Using dbFile: %s", dbFile)
 
 	if showVersionLong {
 		fmt.Println(version)
@@ -151,17 +84,112 @@ func main() {
 		return
 	}
 
-	log.Debug(postsDir)
-	fmt.Println(postsDir)
-
-	if exists, _ := exists(postsDir); exists == false {
-		log.Fatalf("Posts dir %s does not exist!", postsDir)
-	}
-
 	log.Debug("loading config")
 
 	config := loadConfig(configDir)
 
+	if config.PostsDir == "" && postsDir != "" {
+		config.PostsDir = postsDir
+	}
+	if config.TemplatesDir == "" && templatesDir != "" {
+		config.TemplatesDir = templatesDir
+	}
+	if config.StaticDir == "" && staticDir != "" {
+		config.StaticDir = staticDir
+	}
+	if config.UploadsDir == "" && uploadsDir != "" {
+		config.UploadsDir = uploadsDir
+	}
+
+	log.Debug(postsDir)
+	fmt.Println(config.PostsDir)
+
+	if exists, _ := exists(config.PostsDir); exists == false {
+		log.Fatalf("PostsDir dir %s does not exist!", config.PostsDir)
+	}
+
 	// runWatcher(postsDir, dbFile)
-	runServer(config, dbFile, templatesDir, postsDir, staticDir)
+	runServer(config, dbFile)
+}
+
+// exists returns whether the given file or directory exists
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
+}
+
+func loadConfig(configPath string) blog.Config {
+	viper.AddConfigPath(configPath)
+	viper.ReadInConfig()
+
+	var config blog.Config
+	viper.Unmarshal(&config)
+
+	log.Debugf("config: %v", config)
+	return config
+}
+
+func runServer(
+	config blog.Config, dbFile string) {
+	// TODO: config or args with db location and posts dir
+
+	db, err := blog.GetDb(dbFile)
+	if err != nil {
+		log.Fatalf("Could not get db connection: %v", err)
+	}
+
+	repo := blog.PostsRepo{
+		PostsDirectory: config.PostsDir,
+	}
+
+	r := chi.NewRouter()
+
+	r.Use(
+		middleware.RequestID,
+		middleware.StripSlashes,
+		middleware.Logger,
+		middleware.Recoverer,
+	)
+
+	r.Route("/", func(r chi.Router) {
+		r.Mount("/", blog.CreateIndexFunc(config, db))
+		r.Mount("/{year}/{month}/{slug}", blog.CreatePostPageFunc(
+			config, db))
+		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, db))
+		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db))
+		r.Mount("/tag/{tag}", blog.CreateTagPageFunc(config, db))
+		r.Mount("/feed.xml", blog.CreateRssFunc(config, db))
+		r.Mount("/search", blog.CreateSearchPageFunc(config, db))
+
+		r.Mount("/new", blog.CreateNewPostFunc(config, db, repo))
+		r.Mount(
+			"/edit/{postID}",
+			blog.CreateEditPostFunc(config, db, repo))
+		r.Mount(
+			"/edit",
+			blog.CreateEditPostFunc(config, db, repo))
+		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, repo))
+
+		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile))
+		r.Mount("/signout", blog.CreateSignoutPageFunc(config, dbFile))
+
+		blog.FileServer(r, "/static", http.Dir(config.StaticDir))
+		blog.FileServer(r, "/uploads", http.Dir(config.UploadsDir))
+	})
+
+	loc := fmt.Sprintf(fmt.Sprintf(
+		"%s:%s", config.Server.Location,
+		config.Server.Port))
+
+	log.Info("=====================================")
+	log.Infof("Starting GoldFrog on %s", loc)
+	log.Info("=====================================")
+
+	http.ListenAndServe(loc, r)
 }

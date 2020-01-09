@@ -13,6 +13,10 @@ import (
 	"github.com/araddon/dateparse"
 )
 
+const (
+	TAGLISTRE string = `[\s]*,[\s]*`
+)
+
 type PostsRepo struct {
 	PostsDirectory string
 }
@@ -121,16 +125,28 @@ func ParseFile(path string) (Post, error) {
 	post.PostDate = date
 	post.Title = title
 
+	body = strings.TrimSpace(body)
+	post.Body = body
+
 	tagStr := GetFrontMatterItem(frontMatter, "tags")
-	tagList := strings.Split(tagStr, ",")
+	tagList := splitTags(tagStr)
 	var tags []string
 	for _, t := range tagList {
 		tags = append(tags, strings.TrimSpace(t))
 	}
-	post.Tags = tags
 
-	body = strings.TrimSpace(body)
-	post.Body = body
+	// add post hashtags, cause that's cool
+	processedBody := fmt.Sprintf("%s", markDowner(post.Body))
+	hashtags := getHashTags(processedBody)
+
+	fmt.Printf("Found hashtags: %v", hashtags)
+	for _, t := range hashtags {
+		if !tagInTags(t, tags) {
+			tags = append(tags, t)
+		}
+	}
+
+	post.Tags = tags
 
 	// log.Debugf("%q", post)
 
@@ -151,26 +167,32 @@ func splitFile(source string) []string {
 }
 
 func getPostDate(dateStr string, filename string) (time.Time, error) {
+	if dateStr != "" {
+		date, err := dateparse.ParseAny(dateStr)
 
-	date, err := dateparse.ParseAny(dateStr)
-
-	if err == nil {
-		return date, nil
+		if err == nil {
+			return date, nil
+		}
+		log.Warn(err)
+		return time.Time{}, err
 	}
-	log.Warn(err)
+
+	log.Debug("No date found in header...")
 
 	pathRe := regexp.MustCompile(`^([\d]{4})-([\d]{2})-([\d]{2})-`)
 	r := pathRe.FindSubmatch([]byte(filename))
 	if len(r) == 0 {
-		return time.Now(), errors.New(fmt.Sprintf(
+		return time.Time{}, errors.New(fmt.Sprintf(
 			"Cannot get postdate from dateStr or filename: %s",
 			filename))
 	}
+
 	year := r[1]
 	month := r[2]
 	day := r[3]
 
 	dateStr = fmt.Sprintf("%s-%s-%s", year, month, day)
+	log.Debugf("Got dateStr: %s", dateStr)
 	return time.Parse("2006-01-02", dateStr)
 }
 
@@ -180,8 +202,39 @@ func getPostSlugFromFile(filename string) string {
 	if len(r) != 5 { // r[0] is the full string
 		return ""
 	}
-	fmt.Println(string(r[4]))
-	return string(r[4])
+	slug := string(r[4])
+	fmt.Println(slug)
+	return slug
+}
+
+func tagInTags(tag string, tags []string) bool {
+	for _, t := range tags {
+		if strings.ToLower(t) == strings.ToLower(tag) {
+			return true
+		}
+	}
+	return false
+}
+
+func splitTags(tags string) []string {
+	re := regexp.MustCompile(TAGLISTRE)
+	tagList1 := re.Split(tags, -1)
+	var tagList2 []string
+	for _, t := range tagList1 {
+		tagList2 = append(tagList2, strings.ToLower(strings.TrimSpace(t)))
+	}
+	return tagList2
+}
+
+func getHashTags(s string) []string {
+	re := regexp.MustCompile("#[[:alnum:]]+")
+	res := re.FindAll([]byte(s), -1)
+	var hashtags []string
+	for _, b := range res {
+		hashtags = append(hashtags, strings.ToLower(
+			strings.Trim(string(b), "#")))
+	}
+	return hashtags
 }
 
 func makePostSlug(title string) string {
@@ -193,4 +246,47 @@ func makePostSlug(title string) string {
 	s = string(re.ReplaceAll([]byte(s), []byte("")))
 	s = strings.TrimRight(s, "-")
 	return s
+}
+
+func makeMicroMessage(
+	source string, length int, withTitle string, withLink string) string {
+	/*
+		<Title optional
+
+		><Body
+
+		><link>
+	*/
+	if withTitle != "" {
+		withTitle += "\n\n"
+	}
+
+	if withLink != "" {
+		withLink = "\n\n" + withLink
+	}
+	// establish available chars for body
+	// length - len(title)
+	//        - len(blog.url + post.url)
+	availableChars := length - len(withTitle) - len(withLink)
+
+	// split paras
+	sourceParas := strings.Split(source, "\n\n")
+	var messageParas []string
+	var messageBody string
+	if len(source) < availableChars {
+		messageBody = source
+	} else {
+		for _, para := range sourceParas {
+			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
+				messageParas = append(
+					messageParas, strings.TrimSpace(para))
+			} else {
+				break
+			}
+		}
+		messageBody = strings.Join(messageParas, "\n\n")
+	}
+	// find closes para that fits in available length
+
+	return withTitle + messageBody + withLink
 }

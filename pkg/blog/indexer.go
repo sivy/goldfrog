@@ -2,23 +2,26 @@ package blog
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func IndexPosts(postsDir string, dbFile string, verbose bool) {
-	log.Infof("Indexing posts in %s to %s", postsDir, dbFile)
-	log.Debugf("Checking db at %s", dbFile)
+	logger := logrus.New()
+
+	logger.Infof("Indexing posts in %s to %s", postsDir, dbFile)
+	logger.Debugf("Checking db at %s", dbFile)
 
 	if !checkDb(dbFile) {
-		log.Infof("Creating DB at %s", dbFile)
+		logger.Infof("Creating DB at %s", dbFile)
 		initDb(dbFile)
 	}
 
 	db, err := GetDb(dbFile)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 
@@ -31,86 +34,81 @@ func IndexPosts(postsDir string, dbFile string, verbose bool) {
 	var i = 0
 	for _, f := range files {
 		indexed := IndexFile(f, db, verbose)
-		if indexed {
-			i++
+		if indexed > 0 {
+			i += indexed
 		}
 	}
 
-	log.Debugf("Found %d files", len(files))
-	log.Debugf("Indexed %d files", i)
+	logger.Debugf("Found %d files", len(files))
+	logger.Debugf("Indexed %d files", i)
 }
 
-func IndexFile(file string, db *sql.DB, verbose bool) bool {
+func IndexFile(file string, db *sql.DB, verbose bool) int {
+	logger := logrus.New()
+
 	if verbose {
-		log.Debugf("Indexing file %s", file)
+		logger.Debugf("=== Indexing file %s", file)
 	}
 	var post Post
 	post, err := ParseFile(file)
 
 	if err != nil {
-		log.Errorf("Could not parse file %s", file)
-		return false
+		logger.Errorf("Could not parse file %s", file)
+		return 0
 	}
 	if verbose {
-		log.Debugf("loaded post: %s", post.Title)
+		logger.Debugf("loaded post: %s", post.Title)
 	}
 
-	// does it exist?
-	rows, err := db.Query(fmt.Sprintf(
-		"SELECT id FROM posts WHERE slug = '%s' LIMIT 1", post.Slug))
+	var sql = `
+		INSERT INTO posts (
+			slug, title, tags, postdate, body, format
+		) VALUES (
+			?, ?, ?, ?, ?, 'markdown'
+		) ON CONFLICT(slug) DO UPDATE
+		SET
+			title=excluded.title,
+			tags=excluded.tags,
+			postdate=excluded.postdate,
+			body=excluded.body;
+	`
+	logger.Infof("Insert/Update post %s", post.Slug)
+
+	tx, err := db.Begin()
+	res, err := tx.Exec(
+		sql,
+		post.Slug,
+		post.Title,
+		strings.Join(post.Tags, ", "),
+		post.PostDate.Format(time.RFC3339),
+		post.Body,
+	)
 
 	if err != nil {
-		log.Errorf("Error checking for post with slug %s: %v", post.Slug, err)
-		return false
-	}
-
-	var ID int
-	for rows.Next() {
-		rows.Scan(&ID)
-	}
-
-	var sql string
-	if ID != 0 {
-		sql = `
-		UPDATE posts
-		SET title='?', tags='?', postdate=?, body='?'
-		WHERE id=?`
-
-		_, err := db.Exec(
-			sql,
-			post.Title,
-			strings.Join(post.Tags, ", "),
-			post.PostDate.Format(time.RFC3339),
-			post.Body,
-		)
+		logger.Errorf("Could not add post: %s", err)
+		err := tx.Rollback()
 		if err != nil {
-			log.Errorf("Could not update post %s", err)
-			return false
+			logger.Errorf("Could not rollback tx: %s", err)
 		}
-
-	} else {
-		sql = `
-		INSERT into posts (
-			slug, title, tags, postdate, body
-		) values (
-			?, ?, ?, ?, ?
-		)
-		`
-
-		_, err := db.Exec(
-			sql,
-			post.Slug,
-			post.Title,
-			strings.Join(post.Tags, ", "),
-			post.PostDate.Format(time.RFC3339),
-			post.Body,
-		)
-
-		if err != nil {
-			log.Errorf("Could not add post %s", err)
-			return false
-		}
+		return 0
 	}
 
-	return true
+	err = tx.Commit()
+	if err != nil {
+		logger.Errorf("Could not commit post: %s", err)
+		err := tx.Rollback()
+		if err != nil {
+			logger.Errorf("Could not rollback tx: %s", err)
+		}
+		return 0
+	}
+
+	rowCount, _ := res.RowsAffected()
+	lastId, _ := res.LastInsertId()
+
+	logger.Infof(
+		"Inserted %d records, ID %d",
+		rowCount, lastId)
+
+	return int(rowCount)
 }
