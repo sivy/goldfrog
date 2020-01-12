@@ -368,6 +368,7 @@ func CreateNewPostFunc(
 			log.Infof("File upload in progress...")
 
 			imagePath = filepath.Join(config.UploadsDir, handler.Filename)
+			log.Debugf("Writing uploaded file: %s", imagePath)
 			f, err := os.OpenFile(
 				imagePath, os.O_WRONLY|os.O_CREATE, 0777)
 
@@ -496,15 +497,19 @@ func CreateEditPostFunc(
 		file, handler, err := r.FormFile("postimage")
 		var hasImage bool
 		var imageUrl string
+		var imagePath string
 
 		if err == nil {
 			// there's an image
 			hasImage = true
 			defer file.Close()
 			log.Infof("File upload in progress...")
+
+			imagePath = filepath.Join(config.UploadsDir, handler.Filename)
+			log.Debugf("Writing uploaded file: %s", imagePath)
+
 			f, err := os.OpenFile(
-				filepath.Join(config.StaticDir, "images", handler.Filename),
-				os.O_WRONLY|os.O_CREATE, 0777)
+				imagePath, os.O_WRONLY|os.O_CREATE, 0777)
 			if err != nil {
 				log.Error(err)
 				hasImage = false
