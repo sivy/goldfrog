@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +26,9 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("Serving index...")
 
-		postOpts := GetPostOpts{Limit: 20}
+		postOpts := GetPostOpts{}
+		getPaginationOpts(r, &postOpts)
+
 		posts := GetPosts(db, postOpts)
 
 		log.Debugf("Found %d posts", len(posts))
@@ -386,6 +389,11 @@ func CreateNewPostFunc(
 		title := r.PostFormValue("title")
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
+		slug := r.PostFormValue("slug")
+
+		if slug == "" {
+			slug = makePostSlug(title)
+		}
 
 		body = strings.Replace(body, "\r\n", "\n", -1)
 
@@ -400,7 +408,7 @@ func CreateNewPostFunc(
 			Title:    title,
 			Tags:     splitTags(tags),
 			Body:     body,
-			Slug:     makePostSlug(title),
+			Slug:     slug,
 			PostDate: time.Now(),
 		}
 
@@ -769,4 +777,34 @@ func updateTags(body string, tags []string) []string {
 	}
 	log.Debugf("End tags: %v", tags)
 	return tags
+}
+
+func getPaginationOpts(r *http.Request, opts *GetPostOpts) {
+	page := 0
+	pageOpt := r.FormValue("page")
+	i, err := strconv.Atoi(pageOpt)
+	if err != nil {
+		log.Debug(err)
+	}
+	page = i
+
+	offset := 0
+
+	limit := 20
+	limitOpt := r.FormValue("limit")
+	if limitOpt != "" {
+		i, err := strconv.Atoi(limitOpt)
+		if err != nil {
+			log.Debug(err)
+		} else {
+			limit = i
+		}
+	}
+
+	if page != 0 {
+		offset = page * limit
+	}
+
+	opts.Limit = limit
+	opts.Offset = offset
 }

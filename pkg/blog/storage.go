@@ -18,9 +18,10 @@ func GetDb(dbFile string) (*sql.DB, error) {
 type GetPostOpts struct {
 	Title string
 	// PostDate time.Time
-	Tags  []string
-	Body  string
-	Limit int
+	Tags   []string
+	Body   string
+	Offset int
+	Limit  int
 }
 
 type ArchiveEntry struct {
@@ -68,7 +69,9 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		}
 	}
 	sql += " ORDER BY datetime(postdate) DESC LIMIT ?"
-
+	if opts.Offset > 0 {
+		sql += " OFFSET ?"
+	}
 	if opts.Limit == 0 {
 		opts.Limit = 100
 	}
@@ -79,6 +82,9 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 	args := make([]interface{}, len(whereValues))
 	for i, id := range whereValues {
 		args[i] = id
+	}
+	if opts.Offset > 0 {
+		args = append(args, opts.Offset)
 	}
 
 	rows, err := db.Query(sql, args...)
@@ -425,6 +431,8 @@ func DeletePost(db *sql.DB, postID string) error {
 
 	return nil
 }
+
+// func paginatePosts(db *sql.DB, )
 
 func initDb(dbFile string) {
 	createSql := `
