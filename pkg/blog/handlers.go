@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -338,7 +339,10 @@ func CreateNewPostFunc(
 				log.Errorf("Could not get template: %v", err)
 			}
 
-			err = t.ExecuteTemplate(w, "base", struct {
+			title := r.FormValue("title")
+			body := r.FormValue("body")
+
+			err = t.ExecuteTemplate(w, "pagebase", struct {
 				Config     Config
 				Post       Post
 				FormAction string
@@ -347,8 +351,11 @@ func CreateNewPostFunc(
 				ShowSlug   bool
 				ShowExpand bool
 			}{
-				Config:     config,
-				Post:       Post{},
+				Config: config,
+				Post: Post{
+					Title: title,
+					Body:  body,
+				},
 				FormAction: "/new",
 				IsOwner:    true,
 				TextHeight: 20,
@@ -427,19 +434,23 @@ func CreateNewPostFunc(
 
 		crossPosters := MakeCrossPosters(config)
 
+		var hooks = make([]CrossPoster, 0)
+
 		if r.PostFormValue("twitter") == "on" {
-			postedUrl := crossPosters["twitter"].SendPost(p, false)
-			if postedUrl != "" {
-				log.Infof("Posted twtiter message: %s", postedUrl)
-			}
+			hooks = append(hooks, crossPosters["twitter"])
 		}
 
 		if r.PostFormValue("mastodon") == "on" {
-			postedUrl := crossPosters["mastodon"].SendPost(p, false)
-			if postedUrl != "" {
-				log.Infof("Posted mastodon message: %s", postedUrl)
-			}
+			hooks = append(hooks, crossPosters["mastodon"])
 		}
+
+		var wg sync.WaitGroup
+		for _, hook := range hooks {
+			log.Debugf("Adding worker for hook %v", hook)
+			wg.Add(1)
+			go worker(hook, p, false, &wg)
+		}
+		wg.Wait()
 
 		redirect(w, config.TemplatesDir, "/")
 		return
@@ -807,4 +818,12 @@ func getPaginationOpts(r *http.Request, opts *GetPostOpts) {
 
 	opts.Limit = limit
 	opts.Offset = offset
+}
+
+func worker(hook CrossPoster, post Post, linkOnly bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	postedUrl := hook.SendPost(post, linkOnly)
+	if postedUrl != "" {
+		log.Infof("Posted message: %s", postedUrl)
+	}
 }
