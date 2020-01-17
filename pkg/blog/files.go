@@ -221,7 +221,9 @@ func splitTags(tags string) []string {
 	tagList1 := re.Split(tags, -1)
 	var tagList2 []string
 	for _, t := range tagList1 {
-		tagList2 = append(tagList2, strings.ToLower(strings.TrimSpace(t)))
+		if t != "" {
+			tagList2 = append(tagList2, strings.ToLower(strings.TrimSpace(t)))
+		}
 	}
 	return tagList2
 }
