@@ -98,37 +98,8 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		return posts
 	}
 
-	for rows.Next() {
-		// fmt.Printf("%v", row)
-		var p Post
-		var body string
-		var tags string
-		var dateStr string
+	posts = rowsToPosts(rows)
 
-		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
-		if err != nil {
-			log.Error(err)
-			return posts
-		}
-		var date time.Time
-		var err error
-
-		date, err = dateparse.ParseAny(dateStr)
-
-		if err != nil {
-			log.Errorf("Cannot parse date from %s", dateStr)
-			p.PostDate = time.Now()
-		} else {
-			p.PostDate = date
-		}
-
-		p.Tags = splitTags(tags)
-
-		body = strings.Replace(body, "\r\n", "\n", -1)
-		p.Body = body
-
-		posts = append(posts, p)
-	}
 	return posts
 }
 
@@ -156,38 +127,8 @@ func GetTaggedPosts(db *sql.DB, tag string) []Post {
 	if rows.Err() != nil {
 		log.Error(rows.Err())
 	}
+	posts = rowsToPosts(rows)
 
-	for rows.Next() {
-		var p Post
-		var body string
-		var tags string
-		var dateStr string
-
-		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
-		if err != nil {
-			log.Error(err)
-		}
-		// fmt.Printf("%v", p)
-
-		var date time.Time
-		var err error
-
-		date, err = dateparse.ParseAny(dateStr)
-
-		if err != nil {
-			log.Errorf("Cannot parse date from %s", dateStr)
-			p.PostDate = time.Now()
-		} else {
-			p.PostDate = date
-		}
-
-		p.Tags = splitTags(tags)
-
-		body = strings.Replace(body, "\r\n", "\n", -1)
-		p.Body = body
-
-		posts = append(posts, p)
-	}
 	return posts
 }
 
@@ -206,34 +147,11 @@ func GetPost(db *sql.DB, postID string) (Post, error) {
 		return p, err
 	}
 
-	for rows.Next() {
-		// fmt.Printf("%v", row)
-		var body string
-		var tags string
-		var dateStr string
+	var posts = make([]Post, 1)
 
-		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
-		if err != nil {
-			log.Error(err)
-		}
-		var date time.Time
-		var err error
+	posts = rowsToPosts(rows)
 
-		date, err = dateparse.ParseAny(dateStr)
-
-		if err != nil {
-			log.Errorf("Cannot parse date from %s", dateStr)
-			p.PostDate = time.Now()
-		} else {
-			p.PostDate = date
-		}
-
-		p.Tags = splitTags(tags)
-
-		body = strings.Replace(body, "\r\n", "\n", -1)
-		p.Body = body
-	}
-	return p, nil
+	return posts[0], nil
 }
 
 func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
@@ -253,34 +171,10 @@ func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
 		return p, err
 	}
 
-	for rows.Next() {
-		// fmt.Printf("%v", row)
-		var body string
-		var tags string
-		var dateStr string
+	var posts = make([]Post, 1)
+	posts = rowsToPosts(rows)
 
-		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
-		if err != nil {
-			log.Error(err)
-		}
-		var date time.Time
-		var err error
-
-		date, err = dateparse.ParseAny(dateStr)
-
-		if err != nil {
-			log.Errorf("Cannot parse date from %s", dateStr)
-			p.PostDate = time.Now()
-		} else {
-			p.PostDate = date
-		}
-
-		p.Tags = splitTags(tags)
-
-		body = strings.Replace(body, "\r\n", "\n", -1)
-		p.Body = body
-	}
-	return p, nil
+	return posts[0], nil
 }
 
 func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
@@ -322,7 +216,7 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 	return archiveData
 }
 
-func GetArchivePosts(db *sql.DB, year string, month string) []Post {
+func GetArchiveMonthPosts(db *sql.DB, year string, month string) []Post {
 	log := logrus.New()
 
 	rows, err := db.Query(`
@@ -340,35 +234,31 @@ func GetArchivePosts(db *sql.DB, year string, month string) []Post {
 
 	var posts []Post
 
-	for rows.Next() {
-		// fmt.Printf("%v", row)
-		var p Post
-		var body string
-		var tags string
-		var dateStr string
+	posts = rowsToPosts(rows)
 
-		err = rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
-		if err != nil {
-			log.Error(err)
-		}
-		var date time.Time
-		var err error
+	return posts
+}
 
-		date, err = dateparse.ParseAny(dateStr)
+func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []Post {
+	log := logrus.New()
 
-		if err != nil {
-			log.Errorf("Cannot parse date from %s", dateStr)
-			p.PostDate = time.Now()
-		} else {
-			p.PostDate = date
-		}
+	rows, err := db.Query(`
+		SELECT id, slug, title, tags,
+			postdate, body
+		FROM posts
+		WHERE strftime("%Y", postdate) = ?
+		AND strftime("%m", postdate) = ?
+		AND strftime("%d", postdate) = ?
+		ORDER BY datetime(postdate) DESC;
+	`, year, month, day)
 
-		p.Tags = splitTags(tags)
-
-		p.Body = body
-
-		posts = append(posts, p)
+	if err != nil {
+		log.Errorf("Could not load posts: %v", err)
 	}
+
+	var posts []Post
+	posts = rowsToPosts(rows)
+
 	return posts
 }
 
@@ -464,4 +354,38 @@ func checkDb(dbFile string) bool {
 	}
 	_, err = db.Exec(`SELECT count(*) FROM posts`)
 	return err == nil
+}
+
+func rowsToPosts(rows *sql.Rows) []Post {
+	var posts []Post
+
+	for rows.Next() {
+		// fmt.Printf("%v", row)
+		var p Post
+		var body string
+		var tags string
+		var dateStr string
+
+		err := rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
+		if err != nil {
+			log.Error(err)
+		}
+		var date time.Time
+
+		date, err = dateparse.ParseAny(dateStr)
+
+		if err != nil {
+			log.Errorf("Cannot parse date from %s", dateStr)
+			p.PostDate = time.Now()
+		} else {
+			p.PostDate = date
+		}
+
+		p.Tags = splitTags(tags)
+
+		p.Body = body
+
+		posts = append(posts, p)
+	}
+	return posts
 }
