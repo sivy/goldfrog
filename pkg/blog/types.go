@@ -30,7 +30,7 @@ func (post *Post) TagString() string {
 func (post *Post) Url() string {
 	return fmt.Sprintf(
 		"/%s/%s",
-		post.PostDate.Format("2006/01"),
+		post.PostDate.Format("2006/01/02"),
 		post.Slug,
 	)
 }
