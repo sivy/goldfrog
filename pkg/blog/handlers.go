@@ -72,7 +72,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// CreateIndexFunc
+// CreateRssFunc
 func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 	log.Debug("Creating rss handler")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -154,6 +154,85 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// CreateIndexFunc
+func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
+	log.Debug("Creating index handler")
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Info("Serving index...")
+
+		year := chi.URLParam(r, "year")
+		month := chi.URLParam(r, "month")
+		dayOrSlug := chi.URLParam(r, "dayOrSlug")
+
+		isDay, err := regexp.MatchString(`\d+`, dayOrSlug)
+		if err != nil {
+			log.Errorf("How did this happen: %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		if !isDay {
+			log.Infof("Redirecting old permalink for %s", dayOrSlug)
+			post, err := GetPostBySlug(db, dayOrSlug)
+
+			if err != nil {
+				log.Errorf("Could not get post: %v", err)
+				w.WriteHeader(500)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			http.Redirect(w, r, post.Url(), http.StatusPermanentRedirect)
+		}
+
+		date, err := time.Parse("2006/01/02",
+			fmt.Sprintf("%s/%s/%s", year, month, dayOrSlug))
+
+		if err != nil {
+			log.Errorf("Bad date values: %s, %s, %s", year, month, dayOrSlug)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		posts := GetArchiveDayPosts(db, year, month, dayOrSlug)
+
+		log.Debugf("Found %d posts", len(posts))
+
+		t, err := getTemplate(config.TemplatesDir, "dailydigest.html")
+
+		if err != nil {
+			log.Errorf("Could not parse template: %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		log.Debugf("index template: %v", t)
+
+		isOwner := checkIsOwner(config, r)
+
+		err = t.ExecuteTemplate(w, "base", struct {
+			Posts   []Post
+			Post    Post
+			Config  Config
+			IsOwner bool
+			Date    time.Time
+		}{
+			Posts:   posts,
+			Post:    Post{},
+			Config:  config,
+			IsOwner: isOwner,
+			Date:    date,
+		})
+
+		if err != nil {
+			log.Warnf("Error rendering: %v", err)
+		}
+	}
+}
+
 func CreateArchiveYearMonthFunc(config Config, db *sql.DB) http.HandlerFunc {
 	log.Debug("Creating main archive list handler")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -193,7 +272,7 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		year := chi.URLParam(r, "year")
 		month := chi.URLParam(r, "month")
 
-		posts := GetArchivePosts(db, year, month)
+		posts := GetArchiveMonthPosts(db, year, month)
 
 		t, err := getTemplate(config.TemplatesDir, "archive_posts.html")
 

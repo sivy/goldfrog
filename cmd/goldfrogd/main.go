@@ -159,7 +159,9 @@ func runServer(
 
 	r.Route("/", func(r chi.Router) {
 		r.Mount("/", blog.CreateIndexFunc(config, db))
-		r.Mount("/{year}/{month}/{slug}", blog.CreatePostPageFunc(
+		// redirect for old permalinks
+		r.Mount("/{year}/{month}/{dayOrSlug}", blog.CreateDailyPostsFunc(config, db))
+		r.Mount("/{year}/{month}/{day}/{slug}", blog.CreatePostPageFunc(
 			config, db))
 		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, db))
 		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db))
