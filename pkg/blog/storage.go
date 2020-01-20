@@ -36,7 +36,7 @@ var dateFmts = [...]string{
 	"2006-01-02 03:04:05",
 }
 
-func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
+func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 	log := logrus.New()
 
 	var whereClauses = make(map[string]string)
@@ -56,7 +56,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 		whereValues = append(whereValues, value)
 	}
 
-	var posts = make([]Post, 0)
+	var posts = make([]*Post, 0)
 
 	sql := "SELECT id, slug, title, tags, postdate, body FROM posts"
 	if len(whereColumns) > 0 {
@@ -103,9 +103,9 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []Post {
 	return posts
 }
 
-func GetTaggedPosts(db *sql.DB, tag string) []Post {
+func GetTaggedPosts(db *sql.DB, tag string) []*Post {
 	log := logrus.New()
-	var posts = make([]Post, 0)
+	var posts = make([]*Post, 0)
 
 	var count int
 	row := db.QueryRow("SELECT count(*) FROM posts WHERE tags like '%?%'")
@@ -132,7 +132,7 @@ func GetTaggedPosts(db *sql.DB, tag string) []Post {
 	return posts
 }
 
-func GetPost(db *sql.DB, postID string) (Post, error) {
+func GetPost(db *sql.DB, postID string) (*Post, error) {
 	log := logrus.New()
 
 	var p Post
@@ -144,17 +144,19 @@ func GetPost(db *sql.DB, postID string) (Post, error) {
 
 	if err != nil {
 		log.Errorf("Could not load post %s: %v", postID, err)
-		return p, err
+		return &p, err
 	}
 
-	var posts = make([]Post, 1)
+	var posts = make([]*Post, 1)
 
 	posts = rowsToPosts(rows)
 
-	return posts[0], nil
+	post := posts[0]
+
+	return post, nil
 }
 
-func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
+func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 	log := logrus.New()
 
 	var p Post
@@ -168,13 +170,13 @@ func GetPostBySlug(db *sql.DB, postSlug string) (Post, error) {
 	if err != nil {
 		log.Errorf(
 			"Could not load post %s: %v", postSlug, err)
-		return p, err
+		return &p, err
 	}
 
-	var posts = make([]Post, 1)
+	var posts = make([]*Post, 1)
 	posts = rowsToPosts(rows)
-
-	return posts[0], nil
+	post := posts[0]
+	return post, nil
 }
 
 func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
@@ -216,7 +218,7 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 	return archiveData
 }
 
-func GetArchiveMonthPosts(db *sql.DB, year string, month string) []Post {
+func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 	log := logrus.New()
 
 	rows, err := db.Query(`
@@ -232,14 +234,14 @@ func GetArchiveMonthPosts(db *sql.DB, year string, month string) []Post {
 		log.Errorf("Could not load posts: %v", err)
 	}
 
-	var posts []Post
+	var posts []*Post
 
 	posts = rowsToPosts(rows)
 
 	return posts
 }
 
-func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []Post {
+func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Post {
 	log := logrus.New()
 
 	rows, err := db.Query(`
@@ -256,7 +258,7 @@ func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []Pos
 		log.Errorf("Could not load posts: %v", err)
 	}
 
-	var posts []Post
+	var posts []*Post
 	posts = rowsToPosts(rows)
 
 	return posts
@@ -286,7 +288,7 @@ func CreatePost(db *sql.DB, post Post) error {
 
 }
 
-func SavePost(db *sql.DB, post Post) error {
+func SavePost(db *sql.DB, post *Post) error {
 	log := logrus.New()
 
 	_, err := db.Exec(`
@@ -356,8 +358,8 @@ func checkDb(dbFile string) bool {
 	return err == nil
 }
 
-func rowsToPosts(rows *sql.Rows) []Post {
-	var posts []Post
+func rowsToPosts(rows *sql.Rows) []*Post {
+	var posts []*Post
 
 	for rows.Next() {
 		// fmt.Printf("%v", row)
@@ -385,7 +387,7 @@ func rowsToPosts(rows *sql.Rows) []Post {
 
 		p.Body = body
 
-		posts = append(posts, p)
+		posts = append(posts, &p)
 	}
 	return posts
 }

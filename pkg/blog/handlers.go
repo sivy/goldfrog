@@ -30,7 +30,21 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 		postOpts := GetPostOpts{}
 		getPaginationOpts(r, &postOpts)
 
+		isOwner := checkIsOwner(config, r)
+
 		posts := GetPosts(db, postOpts)
+
+		user := User{
+			DisplayName: config.Blog.Author.Name,
+			Email:       config.Blog.Author.Email,
+			Url:         config.Blog.Url,
+			IsAdmin:     isOwner,
+		}
+
+		for _, p := range posts {
+			p.User = user
+			log.Debugf("post.User is %v", p.User)
+		}
 
 		log.Debugf("Found %d posts", len(posts))
 
@@ -44,10 +58,8 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 		}
 		log.Debugf("index template: %v", t)
 
-		isOwner := checkIsOwner(config, r)
-
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts      []Post
+			Posts      []*Post
 			Post       Post
 			Config     Config
 			IsOwner    bool
@@ -95,7 +107,7 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/xml")
 		w.Write([]byte(`<?xml version="1.0" encoding="utf-8" standalone="yes" ?>`))
 		err = t.ExecuteTemplate(w, "rss", struct {
-			Posts  []Post
+			Posts  []*Post
 			Config Config
 		}{
 			Posts:  posts,
@@ -139,7 +151,7 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		isOwner := checkIsOwner(config, r)
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Post    Post
+			Post    *Post
 			Config  Config
 			IsOwner bool
 		}{
@@ -159,6 +171,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 	log.Debug("Creating index handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("Serving index...")
+		isOwner := checkIsOwner(config, r)
 
 		year := chi.URLParam(r, "year")
 		month := chi.URLParam(r, "month")
@@ -198,6 +211,16 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		posts := GetArchiveDayPosts(db, year, month, dayOrSlug)
 
+		user := User{
+			DisplayName: config.Blog.Author.Name,
+			Email:       config.Blog.Author.Email,
+			Url:         config.Blog.Url,
+			IsAdmin:     isOwner,
+		}
+
+		for _, p := range posts {
+			p.User = user
+		}
 		log.Debugf("Found %d posts", len(posts))
 
 		t, err := getTemplate(config.TemplatesDir, "dailydigest.html")
@@ -211,10 +234,8 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		log.Debugf("index template: %v", t)
 
-		isOwner := checkIsOwner(config, r)
-
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts   []Post
+			Posts   []*Post
 			Post    Post
 			Config  Config
 			IsOwner bool
@@ -267,13 +288,23 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	log.Debug("Creating archive page handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("Serving archive year/month...")
+		isOwner := checkIsOwner(config, r)
 
 		// postOpts := GetPostOpts{Limit: 10}
 		year := chi.URLParam(r, "year")
 		month := chi.URLParam(r, "month")
 
 		posts := GetArchiveMonthPosts(db, year, month)
+		user := User{
+			DisplayName: config.Blog.Author.Name,
+			Email:       config.Blog.Author.Email,
+			Url:         config.Blog.Url,
+			IsAdmin:     isOwner,
+		}
 
+		for _, p := range posts {
+			p.User = user
+		}
 		t, err := getTemplate(config.TemplatesDir, "archive_posts.html")
 
 		if err != nil {
@@ -284,7 +315,7 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		}
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts  []Post
+			Posts  []*Post
 			Config Config
 			Year   string
 			Month  string
@@ -308,7 +339,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
-		var posts []Post
+		var posts []*Post
 		t, err := getTemplate(config.TemplatesDir, "post_list.html")
 
 		// postOpts := GetPostOpts{Limit: 10}
@@ -319,7 +350,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		if term == "" {
 			err = t.ExecuteTemplate(w, "base", struct {
-				Posts   []Post
+				Posts   []*Post
 				Config  Config
 				Title   string
 				IsOwner bool
@@ -337,6 +368,16 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		}
 
 		posts = GetPosts(db, opts)
+		user := User{
+			DisplayName: config.Blog.Author.Name,
+			Email:       config.Blog.Author.Email,
+			Url:         config.Blog.Url,
+			IsAdmin:     isOwner,
+		}
+
+		for _, p := range posts {
+			p.User = user
+		}
 		log.Debugf("found posts: %d", len(posts))
 
 		if err != nil {
@@ -347,7 +388,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		}
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts   []Post
+			Posts   []*Post
 			Config  Config
 			Title   string
 			IsOwner bool
@@ -386,7 +427,7 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		isOwner := checkIsOwner(config, r)
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts   []Post
+			Posts   []*Post
 			Config  Config
 			Title   string
 			IsOwner bool
@@ -428,7 +469,6 @@ func CreateNewPostFunc(
 				IsOwner    bool
 				TextHeight int
 				ShowSlug   bool
-				ShowExpand bool
 			}{
 				Config: config,
 				Post: Post{
@@ -439,7 +479,6 @@ func CreateNewPostFunc(
 				IsOwner:    true,
 				TextHeight: 20,
 				ShowSlug:   true,
-				ShowExpand: false,
 			})
 			return
 		}
@@ -477,6 +516,10 @@ func CreateNewPostFunc(
 		body := r.PostFormValue("body")
 		slug := r.PostFormValue("slug")
 
+		if title == "" {
+			slug = makeNoteSlug(body)
+		}
+
 		if slug == "" {
 			slug = makePostSlug(title)
 		}
@@ -501,7 +544,7 @@ func CreateNewPostFunc(
 		log.Debug(p)
 		p.Tags = updateTags(p.Body, p.Tags)
 
-		err = repo.SavePostFile(p)
+		err = repo.SavePostFile(&p)
 		if err != nil {
 			log.Errorf("Could not save post file: %v", err)
 		}
@@ -527,7 +570,7 @@ func CreateNewPostFunc(
 		for _, hook := range hooks {
 			log.Debugf("Adding worker for hook %v", hook)
 			wg.Add(1)
-			go worker(hook, p, false, &wg)
+			go worker(hook, &p, false, &wg)
 		}
 		wg.Wait()
 
@@ -558,6 +601,15 @@ func CreateEditPostFunc(
 				http.Redirect(w, r, "/", http.StatusUnauthorized)
 			}
 
+			post.User = User{
+				DisplayName: config.Blog.Author.Name,
+				Email:       config.Blog.Author.Email,
+				Url:         config.Blog.Url,
+				IsAdmin:     true,
+			}
+
+			log.Debugf("post.User is %v", post.User)
+
 			t, err := getTemplate(config.TemplatesDir, "editpost.html")
 			if err != nil {
 				log.Errorf("Could not get template: %v", err)
@@ -566,7 +618,7 @@ func CreateEditPostFunc(
 
 			err = t.ExecuteTemplate(w, "base", struct {
 				Config     Config
-				Post       Post
+				Post       *Post
 				FormAction string
 				IsOwner    bool
 				TextHeight int
@@ -652,6 +704,28 @@ func CreateEditPostFunc(
 		if err != nil {
 			log.Errorf("Could not save post: %v", err)
 		}
+
+		post.Body = "Updated: " + post.Body
+
+		crossPosters := MakeCrossPosters(config)
+
+		var hooks = make([]CrossPoster, 0)
+
+		if r.PostFormValue("twitter") == "on" {
+			hooks = append(hooks, crossPosters["twitter"])
+		}
+
+		if r.PostFormValue("mastodon") == "on" {
+			hooks = append(hooks, crossPosters["mastodon"])
+		}
+
+		var wg sync.WaitGroup
+		for _, hook := range hooks {
+			log.Debugf("Adding worker for hook %v", hook)
+			wg.Add(1)
+			go worker(hook, post, false, &wg)
+		}
+		wg.Wait()
 
 		redirect(w, config.TemplatesDir, post.Url())
 		return
@@ -802,16 +876,18 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	}).Funcs(gtf.GtfFuncMap)
 
 	t, err := t.ParseGlob(filepath.Join(templatesDir, "base/*.html"))
+	if err != nil {
+		return t, err
+	}
+	log.Debug(t.DefinedTemplates())
+
 	t, err = t.ParseFiles(
 		filepath.Join(templatesDir, name),
 	)
 	if err != nil {
 		return t, err
 	}
-
-	if err != nil {
-		return t, err
-	}
+	log.Debug(t.DefinedTemplates())
 
 	return t, nil
 }
@@ -899,7 +975,7 @@ func getPaginationOpts(r *http.Request, opts *GetPostOpts) {
 	opts.Offset = offset
 }
 
-func worker(hook CrossPoster, post Post, linkOnly bool, wg *sync.WaitGroup) {
+func worker(hook CrossPoster, post *Post, linkOnly bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 	postedUrl := hook.SendPost(post, linkOnly)
 	if postedUrl != "" {

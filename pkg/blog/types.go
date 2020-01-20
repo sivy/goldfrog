@@ -20,6 +20,7 @@ type Post struct {
 	Tags     []string  `json:"tags"`
 	PostDate time.Time `json:"date"`
 	Body     string    `json:"body"`
+	User     User      `json:"user"`
 	Format   string    `json:"format"`
 }
 
@@ -48,6 +49,9 @@ func (post *Post) ToString() string {
 }
 
 type User struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	DisplayName string `json:"displayname"`
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+	Url         string `json:"url"`
+	IsAdmin     bool   `json:"isadmin"`
 }

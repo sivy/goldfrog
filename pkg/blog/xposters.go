@@ -13,7 +13,7 @@ import (
 )
 
 type CrossPoster interface {
-	SendPost(post Post, linkOnly bool) string
+	SendPost(post *Post, linkOnly bool) string
 }
 
 type TwitterPoster struct {
@@ -24,7 +24,7 @@ type TwitterPoster struct {
 	AccessSecret string
 }
 
-func (tp *TwitterPoster) SendPost(post Post, linkOnly bool) string {
+func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 	config := oauth1.NewConfig(
 		tp.Config.Twitter.ClientKey,
 		tp.Config.Twitter.ClientSecret)
@@ -74,7 +74,7 @@ type MastodonPoster struct {
 	AccessToken  string
 }
 
-func (xp *MastodonPoster) SendPost(post Post, linkOnly bool) string {
+func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       xp.Site,
 		ClientID:     xp.ClientID,
@@ -87,15 +87,25 @@ func (xp *MastodonPoster) SendPost(post Post, linkOnly bool) string {
 		content = post.Body
 	}
 
-	content = makeMicroMessage(
-		content, 400, "", xp.Config.Blog.Url+post.Url(),
-		post.Tags)
+	if post.Title == "" {
+		content = makeMicroMessage(
+			content, 400, "", xp.Config.Blog.Url+post.Url(),
+			post.Tags)
+	} else {
+		content = makeMicroMessage(
+			content, 400, "",
+			fmt.Sprintf("(monkinetic.blog %s)", post.Slug), // permashortid (see indieweb)
+			post.Tags)
+	}
 
 	toot := mastodon.Toot{
-		SpoilerText: post.Title,
-		Sensitive:   true,
-		Status:      content,
-		Visibility:  "unlisted",
+		Status:     content,
+		Visibility: "unlisted",
+	}
+
+	if post.Title != "" {
+		toot.SpoilerText = post.Title
+		toot.Sensitive = true
 	}
 
 	status, err := c.PostStatus(context.Background(), &toot)
@@ -125,18 +135,6 @@ func MakeCrossPosters(config Config) map[string]CrossPoster {
 		AccessToken:  config.Mastodon.AccessToken,
 	}
 	return posters
-}
-
-func statusMessageFromPost(post Post, maxLength int) string {
-	body := post.Body
-
-	plaintext := stripHTML(body)
-
-	if len(body) < maxLength {
-		maxLength = len(body)
-	}
-
-	return plaintext[:maxLength]
 }
 
 func stripHTML(args ...interface{}) string {

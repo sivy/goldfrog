@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -35,7 +36,7 @@ func (repo *PostsRepo) ListPostFiles() []string {
 	return files
 }
 
-func (repo *PostsRepo) SavePostFile(post Post) error {
+func (repo *PostsRepo) SavePostFile(post *Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
 		post.PostDate.Format("2006-01-02"),
@@ -54,7 +55,7 @@ func (repo *PostsRepo) SavePostFile(post Post) error {
 	return nil
 }
 
-func (repo *PostsRepo) DeletePostFile(post Post) error {
+func (repo *PostsRepo) DeletePostFile(post *Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
 		post.PostDate.Format("2006-01-02"),
@@ -248,6 +249,13 @@ func makePostSlug(title string) string {
 	s = string(re.ReplaceAll([]byte(s), []byte("")))
 	s = strings.TrimRight(s, "-")
 	return s
+}
+
+func makeNoteSlug(content string) string {
+	h := sha256.New()
+	h.Write([]byte(content))
+	str := fmt.Sprintf("%x", h.Sum(nil))
+	return fmt.Sprintf("txt-%s", str[0:7])
 }
 
 func makeMicroMessage(
