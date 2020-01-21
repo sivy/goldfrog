@@ -879,7 +879,6 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	if err != nil {
 		return t, err
 	}
-	log.Debug(t.DefinedTemplates())
 
 	t, err = t.ParseFiles(
 		filepath.Join(templatesDir, name),
@@ -887,7 +886,6 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	if err != nil {
 		return t, err
 	}
-	log.Debug(t.DefinedTemplates())
 
 	return t, nil
 }
