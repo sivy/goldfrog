@@ -258,9 +258,17 @@ func makeNoteSlug(content string) string {
 	return fmt.Sprintf("txt-%s", str[0:7])
 }
 
+type MicroMessageOpts struct {
+	MaxLength int
+	Title     string
+	PermaLink string
+	ShortID   string
+	NumParas  int
+	Tags      []string
+}
+
 func makeMicroMessage(
-	source string, length int, withTitle string,
-	withLink string, withTags []string) string {
+	source string, opts MicroMessageOpts) string {
 	/*
 		<Title optional
 
@@ -270,21 +278,30 @@ func makeMicroMessage(
 
 		><link>
 	*/
-	source = stripHTML(markDowner(source))
 
-	if withTitle != "" {
-		withTitle += "\n\n"
+	if opts.NumParas == 0 {
+		opts.NumParas = -1
 	}
 
-	if withLink != "" {
-		withLink = "\n\n" + withLink
+	source = stripHTML(markDowner(source))
+	var title string
+	var link string
 
+	if opts.Title != "" {
+		title = opts.Title
+	}
+
+	if opts.PermaLink != "" {
+		link = opts.PermaLink
+	}
+	if opts.ShortID != "" {
+		link = fmt.Sprintf("(monkinetic %s)", opts.ShortID)
 	}
 
 	var fmtTagStr string
-	if len(withTags) != 0 {
+	if len(opts.Tags) != 0 {
 		var fmtTags []string
-		for _, t := range withTags {
+		for _, t := range opts.Tags {
 			if t == "" {
 				continue
 			}
@@ -294,22 +311,33 @@ func makeMicroMessage(
 			fmtTags = append(fmtTags, fmt.Sprintf("#%s", t))
 		}
 		fmtTagStr = strings.Join(fmtTags, " ")
-		fmtTagStr = "\n\n" + fmtTagStr
 	}
 
-	// establish available chars for body
-	// length - len(title)
-	//        - len(blog.url + post.url)
-	availableChars := length - len(withTitle) - len(withLink) - len(fmtTagStr)
+	var messageParts []string
+	availableChars := opts.MaxLength
+	if title != "" {
+		availableChars -= len(title) + 2 // len(\n\n)
+	}
+	if link != "" {
+		availableChars -= len(link) + 2 // len(\n\n)
+	}
+	if fmtTagStr != "" {
+		availableChars -= len(fmtTagStr) + 2 // len(\n\n)
+	}
 
 	// split paras
 	sourceParas := strings.Split(source, "\n\n")
 	var messageParas []string
 	var messageBody string
-	if len(source) < availableChars {
-		messageBody = source
-	} else {
-		for _, para := range sourceParas {
+	for n, para := range sourceParas {
+		if opts.NumParas < 0 {
+			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
+				messageParas = append(
+					messageParas, strings.TrimSpace(para))
+			} else {
+				break
+			}
+		} else if opts.NumParas > 0 && n <= opts.NumParas {
 			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
 				messageParas = append(
 					messageParas, strings.TrimSpace(para))
@@ -317,9 +345,23 @@ func makeMicroMessage(
 				break
 			}
 		}
-		messageBody = strings.Join(messageParas, "\n\n")
 	}
+	messageBody = strings.Join(messageParas, "\n\n")
 	// find closes para that fits in available length
 
-	return withTitle + messageBody + fmtTagStr + withLink
+	if title != "" {
+		messageParts = append(messageParts, title)
+	}
+	messageParts = append(messageParts, messageBody)
+
+	if link != "" {
+		messageParts = append(messageParts, link)
+	}
+	if fmtTagStr != "" {
+		messageParts = append(messageParts, fmtTagStr)
+	}
+
+	microMessage := strings.Join(messageParts, "\n\n")
+	log.Debugf("microMessage: %s", microMessage)
+	return microMessage
 }

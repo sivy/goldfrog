@@ -42,10 +42,18 @@ func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 	if !linkOnly {
 		content = post.Body
 	}
+	opts := MicroMessageOpts{
+		MaxLength: 280,
+	}
 
-	content = makeMicroMessage(
-		content, 280, post.Title, tp.Config.Blog.Url+post.Url(),
-		post.Tags)
+	if post.Title != "" {
+		opts.Title = post.Title
+		opts.PermaLink = tp.Config.Blog.Url + post.Permalink()
+	} else {
+		opts.ShortID = post.Slug
+	}
+
+	content = makeMicroMessage(content, opts)
 
 	tweet, _, err := client.Statuses.Update(
 		content, &twitter.StatusUpdateParams{})
@@ -54,8 +62,6 @@ func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 		fmt.Printf("%v", err)
 		return ""
 	}
-
-	log.Infof("%v", tweet)
 
 	url := fmt.Sprintf(
 		"https://twitter.com/%s/status/%s",
@@ -86,17 +92,18 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 	if !linkOnly {
 		content = post.Body
 	}
-
-	if post.Title == "" {
-		content = makeMicroMessage(
-			content, 400, "", xp.Config.Blog.Url+post.Url(),
-			post.Tags)
-	} else {
-		content = makeMicroMessage(
-			content, 400, "",
-			fmt.Sprintf("(monkinetic.blog %s)", post.Slug), // permashortid (see indieweb)
-			post.Tags)
+	opts := MicroMessageOpts{
+		MaxLength: 280,
 	}
+
+	if post.Title != "" {
+		opts.Title = post.Title
+		opts.PermaLink = xp.Config.Blog.Url + post.Permalink()
+	} else {
+		opts.ShortID = post.Slug
+	}
+
+	content = makeMicroMessage(content, opts)
 
 	toot := mastodon.Toot{
 		Status:     content,

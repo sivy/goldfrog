@@ -196,7 +196,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			http.Redirect(w, r, post.Url(), http.StatusPermanentRedirect)
+			http.Redirect(w, r, post.Permalink(), http.StatusPermanentRedirect)
 		}
 
 		date, err := time.Parse("2006/01/02",
@@ -727,7 +727,7 @@ func CreateEditPostFunc(
 		}
 		wg.Wait()
 
-		redirect(w, config.TemplatesDir, post.Url())
+		redirect(w, config.TemplatesDir, post.Permalink())
 		return
 	}
 }

@@ -28,12 +28,16 @@ func (post *Post) TagString() string {
 	return strings.Join(post.Tags, ", ")
 }
 
-func (post *Post) Url() string {
+func (post *Post) Permalink() string {
 	return fmt.Sprintf(
 		"/%s/%s",
 		post.PostDate.Format("2006/01/02"),
 		post.Slug,
 	)
+}
+
+func (post *Post) PermaShortId() string {
+	return post.Slug
 }
 
 func (post *Post) ToString() string {

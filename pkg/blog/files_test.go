@@ -1,8 +1,10 @@
 package blog
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,9 +114,12 @@ func TestGetHashTags(t *testing.T) {
 }
 
 func TestMicroMessage(t *testing.T) {
-	title := "Some Title"
-	// titleLen := 10
-	link := "http://example.com/YYYY/MM/DD/some-title"
+	opts := MicroMessageOpts{
+		Title:     "Some Title",
+		PermaLink: "http://example.com/YYYY/MM/DD/some-title",
+		MaxLength: 280,
+		Tags:      []string{"tag1", "tag2"},
+	}
 
 	// titleLen := len(title)
 	// linkLen := len(link)
@@ -137,9 +142,34 @@ But who has any right to find fault with a man who chooses to enjoy a pleasure t
 has no annoying consequences, or one who avoids a pain that produces no resultant
 pleasure?`
 
-	output := makeMicroMessage(source, 280, title, link, []string{"tag1", "tag2"})
-	assert.Contains(t, output, title+"\n\n")
-	assert.Contains(t, output, "\n\n"+link)
+	output := makeMicroMessage(source, opts)
+	assert.Contains(t, output, opts.Title+"\n\n")
+	assert.Contains(t, output, "\n\n"+opts.PermaLink)
 	assert.Contains(t, output, "#tag1 #tag2")
+	// assert.Nil(t, output)
+}
+
+func TestNoteMicroMessage(t *testing.T) {
+	opts := MicroMessageOpts{
+		ShortID:   "txt-abc123",
+		MaxLength: 280,
+		Tags:      []string{"tag1", "tag2"},
+	}
+
+	// titleLen := len(title)
+	// linkLen := len(link)
+
+	source := `
+But I must explain to you how all this mistaken idea of denouncing pleasure and
+praising pain was born and I will give you a complete account of the system.
+`
+
+	output := makeMicroMessage(source, opts)
+	assert.Contains(
+		t, output, fmt.Sprintf("(monkinetic %s)", opts.ShortID))
+	assert.Contains(
+		t, output, "#tag1 #tag2")
+	assert.Contains(
+		t, output, strings.TrimSpace(source))
 	// assert.Nil(t, output)
 }
