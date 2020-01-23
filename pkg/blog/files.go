@@ -290,9 +290,8 @@ func makeMicroMessage(
 	if opts.Title != "" {
 		title = opts.Title
 	}
-
 	if opts.PermaLink != "" {
-		link = opts.PermaLink
+		link = fmt.Sprintf("(%s)", opts.PermaLink)
 	}
 	if opts.ShortID != "" {
 		link = fmt.Sprintf("(monkinetic %s)", opts.ShortID)

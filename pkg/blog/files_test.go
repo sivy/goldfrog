@@ -121,9 +121,6 @@ func TestMicroMessage(t *testing.T) {
 		Tags:      []string{"tag1", "tag2"},
 	}
 
-	// titleLen := len(title)
-	// linkLen := len(link)
-
 	source := `
 But I must explain to you how all this mistaken idea of denouncing pleasure and
 praising pain was born and I will give you a complete account of the system.
@@ -143,8 +140,8 @@ has no annoying consequences, or one who avoids a pain that produces no resultan
 pleasure?`
 
 	output := makeMicroMessage(source, opts)
-	assert.Contains(t, output, opts.Title+"\n\n")
-	assert.Contains(t, output, "\n\n"+opts.PermaLink)
+	assert.Contains(t, output, opts.Title)
+	assert.Contains(t, output, opts.PermaLink)
 	assert.Contains(t, output, "#tag1 #tag2")
 	// assert.Nil(t, output)
 }
