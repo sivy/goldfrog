@@ -57,5 +57,6 @@ type User struct {
 	Username    string `json:"username"`
 	Email       string `json:"email"`
 	Url         string `json:"url"`
+	Image       string `json:"image"`
 	IsAdmin     bool   `json:"isadmin"`
 }

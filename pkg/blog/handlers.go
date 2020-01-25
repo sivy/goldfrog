@@ -38,6 +38,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
 			Url:         config.Blog.Url,
+			Image:       config.Blog.Author.Image,
 			IsAdmin:     isOwner,
 		}
 
@@ -215,6 +216,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
 			Url:         config.Blog.Url,
+			Image:       config.Blog.Author.Image,
 			IsAdmin:     isOwner,
 		}
 
@@ -299,6 +301,7 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
 			Url:         config.Blog.Url,
+			Image:       config.Blog.Author.Image,
 			IsAdmin:     isOwner,
 		}
 
@@ -372,6 +375,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
 			Url:         config.Blog.Url,
+			Image:       config.Blog.Author.Image,
 			IsAdmin:     isOwner,
 		}
 
