@@ -16,6 +16,7 @@ import (
 
 const (
 	TAGLISTRE string = `[\s]*,[\s]*`
+	HASHTAGRE string = `(?:\s|\A)#[[:alnum:]]+`
 )
 
 type PostsRepo struct {
@@ -230,7 +231,7 @@ func splitTags(tags string) []string {
 }
 
 func getHashTags(s string) []string {
-	re := regexp.MustCompile("#[[:alnum:]]+")
+	re := regexp.MustCompile(HASHTAGRE)
 	res := re.FindAll([]byte(s), -1)
 	var hashtags []string
 	for _, b := range res {
@@ -239,6 +240,17 @@ func getHashTags(s string) []string {
 	}
 	return hashtags
 }
+
+// func linkTags(s string, urlPrefix string) string {
+// 	re := regexp.MustCompile(HASHTAGRE)
+// 	res := re.([]byte(s), -1)
+// 	var hashtags []string
+// 	for _, b := range res {
+// 		hashtags = append(hashtags, strings.ToLower(
+// 			strings.Trim(string(b), "#")))
+// 	}
+// 	return hashtags
+// }
 
 func makePostSlug(title string) string {
 	bits := strings.Split(title, " ")

@@ -7,6 +7,7 @@ type Config struct {
 		Author  struct {
 			Name  string `json:"name" yaml:"name"`
 			Email string `json:"email" yaml:"email"`
+			Image string `json:"image" yaml:"image"`
 		} `json:"author" yaml:"author"`
 		Url  string            `json:"url" yaml:"url"`
 		Meta map[string]string `json:"meta" yaml:"meta"`
