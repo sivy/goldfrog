@@ -235,8 +235,9 @@ func getHashTags(s string) []string {
 	res := re.FindAll([]byte(s), -1)
 	var hashtags []string
 	for _, b := range res {
-		hashtags = append(hashtags, strings.ToLower(
-			strings.Trim(string(b), "#")))
+		m := string(b)
+		tag := strings.Trim(strings.TrimSpace(m), "#")
+		hashtags = append(hashtags, tag)
 	}
 	return hashtags
 }
