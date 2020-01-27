@@ -28,7 +28,7 @@ func (post *Post) TagString() string {
 	return strings.Join(post.Tags, ", ")
 }
 
-func (post *Post) Permalink() string {
+func (post *Post) PermaLink() string {
 	return fmt.Sprintf(
 		"/%s/%s",
 		post.PostDate.Format("2006/01/02"),

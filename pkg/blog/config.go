@@ -32,6 +32,8 @@ type Config struct {
 	StaticDir    string `json:"staticdir" yaml:"staticdir"`
 	UploadsDir   string `json:"uploadsdir" yaml:"uploadsdir"`
 
+	WebMentionEnabled bool `json:"webmentionenabled" yaml:"webmentionenabled"`
+
 	Signin struct {
 		Username string `yaml:"username"`
 		Password string `yaml:"password"`
