@@ -10,6 +10,7 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/mattn/go-mastodon"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/sivy/goldfrog/pkg/webmention"
 )
 
 type CrossPoster interface {
@@ -25,6 +26,7 @@ type TwitterPoster struct {
 }
 
 func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
+	log.Infof("Handling Twitter crosspost...")
 	config := oauth1.NewConfig(
 		tp.Config.Twitter.ClientKey,
 		tp.Config.Twitter.ClientSecret)
@@ -48,7 +50,7 @@ func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 
 	if post.Title != "" {
 		opts.Title = post.Title
-		opts.PermaLink = tp.Config.Blog.Url + post.Permalink()
+		opts.PermaLink = tp.Config.Blog.Url + post.PermaLink()
 	} else {
 		opts.ShortID = post.Slug
 	}
@@ -81,6 +83,7 @@ type MastodonPoster struct {
 }
 
 func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
+	log.Infof("Handling Mastodon crosspost...")
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       xp.Site,
 		ClientID:     xp.ClientID,
@@ -98,7 +101,7 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 
 	if post.Title != "" {
 		opts.Title = post.Title
-		opts.PermaLink = xp.Config.Blog.Url + post.Permalink()
+		opts.PermaLink = xp.Config.Blog.Url + post.PermaLink()
 	} else {
 		opts.ShortID = post.Slug
 	}
@@ -115,6 +118,7 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 		toot.Sensitive = true
 	}
 
+	log.Debugf("Sending Mastodon post...")
 	status, err := c.PostStatus(context.Background(), &toot)
 	if err != nil {
 		log.Error(err)
@@ -122,6 +126,28 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 	}
 	log.Debugf("Posted status: %s", status.URL)
 	return status.URL
+}
+
+type WebMentionPoster struct {
+	Config Config
+}
+
+func (wp *WebMentionPoster) SendPost(post *Post, linkOnly bool) string {
+	log.Infof("Handling WebMentions...")
+	client := webmention.NewWebMentionClient()
+	htmlText := string(markDowner(post.Body))
+
+	sourceLink := wp.Config.Blog.Url + post.PermaLink()
+	links, err := client.FindLinks(htmlText)
+	if err != nil {
+		log.Errorf("Could not get post links: %s", err)
+		return ""
+	}
+	log.Debugf("Found links: %v", links)
+	log.Info("Sending WebMentions...")
+	client.SendWebMentions(sourceLink, links)
+
+	return post.PermaLink()
 }
 
 func MakeCrossPosters(config Config) map[string]CrossPoster {
@@ -140,6 +166,11 @@ func MakeCrossPosters(config Config) map[string]CrossPoster {
 		ClientID:     config.Mastodon.ClientID,
 		ClientSecret: config.Mastodon.ClientSecret,
 		AccessToken:  config.Mastodon.AccessToken,
+	}
+	if config.WebMentionEnabled {
+		posters["webmention"] = &WebMentionPoster{
+			Config: config,
+		}
 	}
 	return posters
 }

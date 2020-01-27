@@ -197,7 +197,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			http.Redirect(w, r, post.Permalink(), http.StatusPermanentRedirect)
+			http.Redirect(w, r, post.PermaLink(), http.StatusPermanentRedirect)
 		}
 
 		date, err := time.Parse("2006/01/02",
@@ -570,6 +570,9 @@ func CreateNewPostFunc(
 			hooks = append(hooks, crossPosters["mastodon"])
 		}
 
+		// always do webmentions
+		hooks = append(hooks, crossPosters["webmention"])
+
 		var wg sync.WaitGroup
 		for _, hook := range hooks {
 			log.Debugf("Adding worker for hook %v", hook)
@@ -731,7 +734,7 @@ func CreateEditPostFunc(
 		}
 		wg.Wait()
 
-		redirect(w, config.TemplatesDir, post.Permalink())
+		redirect(w, config.TemplatesDir, post.PermaLink())
 		return
 	}
 }
