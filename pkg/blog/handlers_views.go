@@ -125,9 +125,21 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving post page...")
 
+		isOwner := checkIsOwner(config, r)
+
 		postSlug := chi.URLParam(r, "slug")
 
 		post, err := GetPostBySlug(db, postSlug)
+
+		user := User{
+			DisplayName: config.Blog.Author.Name,
+			Email:       config.Blog.Author.Email,
+			Url:         config.Blog.Url,
+			Image:       config.Blog.Author.Image,
+			IsAdmin:     isOwner,
+		}
+
+		post.User = user
 
 		logger.Debugf("Found post: %s", post.Title)
 
@@ -147,8 +159,6 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			return
 		}
 		logger.Debug(t)
-
-		isOwner := checkIsOwner(config, r)
 
 		flash, _ := GetFlash(w, r, "flash")
 
