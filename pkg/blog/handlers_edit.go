@@ -354,6 +354,11 @@ func CreateEditPostFunc(
 			hooks = append(hooks, crossPosters["mastodon"])
 		}
 
+		// always do webmentions
+		if crossPosters["webmention"] != nil {
+			hooks = append(hooks, crossPosters["webmention"])
+		}
+
 		var wg sync.WaitGroup
 		for _, hook := range hooks {
 			logger.Debugf("Adding worker for hook %v", hook)
