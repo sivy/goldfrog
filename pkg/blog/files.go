@@ -24,14 +24,14 @@ type PostsRepo struct {
 }
 
 func (repo *PostsRepo) ListPostFiles() []string {
-	log.Debugf("listing files in %s", repo.PostsDirectory)
+	logger.Debugf("listing files in %s", repo.PostsDirectory)
 
 	files := make([]string, 0)
 	files, err := filepath.Glob(filepath.Join(
 		repo.PostsDirectory, "*.md"))
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 	}
 
 	return files
@@ -45,11 +45,11 @@ func (repo *PostsRepo) SavePostFile(post *Post) error {
 	)
 
 	file := filepath.Join(repo.PostsDirectory, filename)
-	log.Debugf("Write file: %s", file)
+	logger.Debugf("Write file: %s", file)
 
 	err := ioutil.WriteFile(file, []byte(post.ToString()), 0777)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -64,11 +64,11 @@ func (repo *PostsRepo) DeletePostFile(post *Post) error {
 	)
 
 	file := filepath.Join(repo.PostsDirectory, filename)
-	log.Debugf("Write file: %s", file)
+	logger.Debugf("Write file: %s", file)
 
 	err := os.Remove(file)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -98,21 +98,21 @@ func ParseFile(path string) (Post, error) {
 	var post Post
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return post, err
 	}
 
 	fileParts := splitFile(string(content))
 
 	if len(fileParts) < 2 {
-		log.Errorf("%q", fileParts)
+		logger.Errorf("%q", fileParts)
 		return post, errors.New("Bad file format")
 	}
 
 	frontMatter := fileParts[0]
-	// log.Debug(frontMatter)
+	// logger.Debug(frontMatter)
 	body := fileParts[1]
-	// log.Debug(body)
+	// logger.Debug(body)
 
 	slug := GetFrontMatterItem(frontMatter, "slug")
 	title := GetFrontMatterItem(frontMatter, "title")
@@ -150,7 +150,7 @@ func ParseFile(path string) (Post, error) {
 
 	post.Tags = tags
 
-	// log.Debugf("%q", post)
+	// logger.Debugf("%q", post)
 
 	return post, nil
 }
@@ -175,11 +175,11 @@ func getPostDate(dateStr string, filename string) (time.Time, error) {
 		if err == nil {
 			return date, nil
 		}
-		log.Warn(err)
+		logger.Warn(err)
 		return time.Time{}, err
 	}
 
-	log.Debug("No date found in header...")
+	logger.Debug("No date found in header...")
 
 	pathRe := regexp.MustCompile(`^([\d]{4})-([\d]{2})-([\d]{2})-`)
 	r := pathRe.FindSubmatch([]byte(filename))
@@ -194,7 +194,7 @@ func getPostDate(dateStr string, filename string) (time.Time, error) {
 	day := r[3]
 
 	dateStr = fmt.Sprintf("%s-%s-%s", year, month, day)
-	log.Debugf("Got dateStr: %s", dateStr)
+	logger.Debugf("Got dateStr: %s", dateStr)
 	return time.Parse("2006-01-02", dateStr)
 }
 
@@ -374,6 +374,6 @@ func makeMicroMessage(
 	}
 
 	microMessage := strings.Join(messageParts, "\n\n")
-	log.Debugf("microMessage: %s", microMessage)
+	logger.Debugf("microMessage: %s", microMessage)
 	return microMessage
 }

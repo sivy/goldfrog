@@ -4,8 +4,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log = logrus.New()
+var logger = logrus.New()
 
 func init() {
-	log.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.DebugLevel)
 }

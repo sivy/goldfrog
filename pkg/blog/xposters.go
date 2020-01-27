@@ -26,7 +26,7 @@ type TwitterPoster struct {
 }
 
 func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
-	log.Infof("Handling Twitter crosspost...")
+	logger.Infof("Handling Twitter crosspost...")
 	config := oauth1.NewConfig(
 		tp.Config.Twitter.ClientKey,
 		tp.Config.Twitter.ClientSecret)
@@ -70,7 +70,7 @@ func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 		tweet.User.ScreenName,
 		tweet.IDStr)
 
-	log.Debugf("Posted status: %s", url)
+	logger.Debugf("Posted status: %s", url)
 	return url
 }
 
@@ -83,7 +83,7 @@ type MastodonPoster struct {
 }
 
 func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
-	log.Infof("Handling Mastodon crosspost...")
+	logger.Infof("Handling Mastodon crosspost...")
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       xp.Site,
 		ClientID:     xp.ClientID,
@@ -118,13 +118,13 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 		toot.Sensitive = true
 	}
 
-	log.Debugf("Sending Mastodon post...")
+	logger.Debugf("Sending Mastodon post...")
 	status, err := c.PostStatus(context.Background(), &toot)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return ""
 	}
-	log.Debugf("Posted status: %s", status.URL)
+	logger.Debugf("Posted status: %s", status.URL)
 	return status.URL
 }
 
@@ -133,18 +133,18 @@ type WebMentionPoster struct {
 }
 
 func (wp *WebMentionPoster) SendPost(post *Post, linkOnly bool) string {
-	log.Infof("Handling WebMentions...")
+	logger.Infof("Handling WebMentions...")
 	client := webmention.NewWebMentionClient()
 	htmlText := string(markDowner(post.Body))
 
 	sourceLink := wp.Config.Blog.Url + post.PermaLink()
 	links, err := client.FindLinks(htmlText)
 	if err != nil {
-		log.Errorf("Could not get post links: %s", err)
+		logger.Errorf("Could not get post links: %s", err)
 		return ""
 	}
-	log.Debugf("Found links: %v", links)
-	log.Info("Sending WebMentions...")
+	logger.Debugf("Found links: %v", links)
+	logger.Info("Sending WebMentions...")
 	client.SendWebMentions(sourceLink, links)
 
 	return post.PermaLink()
@@ -171,6 +171,8 @@ func MakeCrossPosters(config Config) map[string]CrossPoster {
 		posters["webmention"] = &WebMentionPoster{
 			Config: config,
 		}
+	} else {
+		posters["webmention"] = nil
 	}
 	return posters
 }

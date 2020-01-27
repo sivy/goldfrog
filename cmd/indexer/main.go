@@ -14,13 +14,13 @@ import (
 
 var version string // set in linker with ldflags -X main.version=
 
-var log = logrus.New()
+var logger = logrus.New()
 
 func runWatcher(postsDir string, dbFile string) {
 	// TODO: https://godoc.org/github.com/fsnotify/fsnotify#example-NewWatcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	defer watcher.Close()
 
@@ -32,28 +32,28 @@ func runWatcher(postsDir string, dbFile string) {
 				if !ok {
 					return
 				}
-				log.Debugf("event: %s", event)
+				logger.Debugf("event: %s", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Debugf("modified file: %s", event.Name)
+					logger.Debugf("modified file: %s", event.Name)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Errorf("%s", err)
+				logger.Errorf("%s", err)
 			}
 		}
 	}()
 
 	err = watcher.Add(postsDir)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	<-done
 }
 
 func main() {
-	log.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.DebugLevel)
 
 	var postsDir string
 	var dbFile string
@@ -85,6 +85,6 @@ func main() {
 		return
 	}
 
-	log.Infof("Indexing %s", postsDir)
+	logger.Infof("Indexing %s", postsDir)
 	blog.IndexPosts(postsDir, dbFile, verbose)
 }

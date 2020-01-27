@@ -17,10 +17,10 @@ import (
 
 var version string // set in linker with ldflags -X main.version=
 
-var log = logrus.New()
+var logger = logrus.New()
 
 func main() {
-	log.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.DebugLevel)
 
 	var configDir string
 	var postsDir string
@@ -71,7 +71,7 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "")
 	flag.Parse()
 
-	log.Printf("Using dbFile: %s", dbFile)
+	logger.Printf("Using dbFile: %s", dbFile)
 
 	if showVersionLong {
 		fmt.Println(version)
@@ -84,7 +84,7 @@ func main() {
 		return
 	}
 
-	log.Debug("loading config")
+	logger.Debug("loading config")
 
 	config := loadConfig(configDir)
 
@@ -101,11 +101,11 @@ func main() {
 		config.UploadsDir = uploadsDir
 	}
 
-	log.Debug(postsDir)
+	logger.Debug(postsDir)
 	fmt.Println(config.PostsDir)
 
 	if exists, _ := exists(config.PostsDir); exists == false {
-		log.Fatalf("PostsDir dir %s does not exist!", config.PostsDir)
+		logger.Fatalf("PostsDir dir %s does not exist!", config.PostsDir)
 	}
 
 	// runWatcher(postsDir, dbFile)
@@ -131,7 +131,7 @@ func loadConfig(configPath string) blog.Config {
 	var config blog.Config
 	viper.Unmarshal(&config)
 
-	log.Debugf("config: %v", config)
+	logger.Debugf("config: %v", config)
 	return config
 }
 
@@ -141,7 +141,7 @@ func runServer(
 
 	db, err := blog.GetDb(dbFile)
 	if err != nil {
-		log.Fatalf("Could not get db connection: %v", err)
+		logger.Fatalf("Could not get db connection: %v", err)
 	}
 
 	repo := blog.PostsRepo{
@@ -189,9 +189,9 @@ func runServer(
 		"%s:%s", config.Server.Location,
 		config.Server.Port))
 
-	log.Info("=====================================")
-	log.Infof("Starting GoldFrog on %s", loc)
-	log.Info("=====================================")
+	logger.Info("=====================================")
+	logger.Infof("Starting GoldFrog on %s", loc)
+	logger.Info("=====================================")
 
 	http.ListenAndServe(loc, r)
 }

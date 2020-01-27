@@ -8,7 +8,6 @@ import (
 
 	"github.com/araddon/dateparse"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/sirupsen/logrus"
 )
 
 func GetDb(dbFile string) (*sql.DB, error) {
@@ -37,7 +36,6 @@ var dateFmts = [...]string{
 }
 
 func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
-	log := logrus.New()
 
 	var whereClauses = make(map[string]string)
 
@@ -90,11 +88,11 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 	rows, err := db.Query(sql, args...)
 
 	if err != nil {
-		log.Errorf("Could not load posts: %v", err)
+		logger.Errorf("Could not load posts: %v", err)
 		return posts
 	}
 	if rows.Err() != nil {
-		log.Errorf("Could not load posts: %v", err)
+		logger.Errorf("Could not load posts: %v", err)
 		return posts
 	}
 
@@ -104,7 +102,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 }
 
 func GetTaggedPosts(db *sql.DB, tag string) []*Post {
-	log := logrus.New()
+
 	var posts = make([]*Post, 0)
 
 	var count int
@@ -112,7 +110,7 @@ func GetTaggedPosts(db *sql.DB, tag string) []*Post {
 	err := row.Scan(&count)
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 	}
 
 	rows, err := db.Query(`
@@ -122,10 +120,10 @@ func GetTaggedPosts(db *sql.DB, tag string) []*Post {
 	`, "%"+tag+"%")
 
 	if err != nil {
-		log.Errorf("Could not load posts: %v", err)
+		logger.Errorf("Could not load posts: %v", err)
 	}
 	if rows.Err() != nil {
-		log.Error(rows.Err())
+		logger.Error(rows.Err())
 	}
 	posts = rowsToPosts(rows)
 
@@ -133,7 +131,6 @@ func GetTaggedPosts(db *sql.DB, tag string) []*Post {
 }
 
 func GetPost(db *sql.DB, postID string) (*Post, error) {
-	log := logrus.New()
 
 	var p Post
 
@@ -143,7 +140,7 @@ func GetPost(db *sql.DB, postID string) (*Post, error) {
 		WHERE id = ?`, postID)
 
 	if err != nil {
-		log.Errorf("Could not load post %s: %v", postID, err)
+		logger.Errorf("Could not load post %s: %v", postID, err)
 		return &p, err
 	}
 
@@ -157,7 +154,6 @@ func GetPost(db *sql.DB, postID string) (*Post, error) {
 }
 
 func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
-	log := logrus.New()
 
 	var p Post
 
@@ -168,7 +164,7 @@ func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 	`, postSlug)
 
 	if err != nil {
-		log.Errorf(
+		logger.Errorf(
 			"Could not load post %s: %v", postSlug, err)
 		return &p, err
 	}
@@ -180,7 +176,6 @@ func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 }
 
 func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
-	log := logrus.New()
 
 	rows, err := db.Query(`
 	SELECT
@@ -198,7 +193,7 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 	`)
 
 	if err != nil {
-		log.Errorf("Could not load post data: %v", err)
+		logger.Errorf("Could not load post data: %v", err)
 	}
 
 	var archiveData []ArchiveEntry
@@ -211,7 +206,7 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 			&archiveEntry.Year, &archiveEntry.Month, &archiveEntry.Count)
 
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 		archiveData = append(archiveData, archiveEntry)
 	}
@@ -219,7 +214,6 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 }
 
 func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
-	log := logrus.New()
 
 	rows, err := db.Query(`
 		SELECT id, slug, title, tags,
@@ -231,7 +225,7 @@ func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 	`, year, month)
 
 	if err != nil {
-		log.Errorf("Could not load posts: %v", err)
+		logger.Errorf("Could not load posts: %v", err)
 	}
 
 	var posts []*Post
@@ -242,7 +236,6 @@ func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 }
 
 func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Post {
-	log := logrus.New()
 
 	rows, err := db.Query(`
 		SELECT id, slug, title, tags,
@@ -255,7 +248,7 @@ func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Po
 	`, year, month, day)
 
 	if err != nil {
-		log.Errorf("Could not load posts: %v", err)
+		logger.Errorf("Could not load posts: %v", err)
 	}
 
 	var posts []*Post
@@ -265,7 +258,6 @@ func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Po
 }
 
 func CreatePost(db *sql.DB, post Post) error {
-	log := logrus.New()
 
 	_, err := db.Exec(`
 	INSERT into posts (
@@ -280,7 +272,7 @@ func CreatePost(db *sql.DB, post Post) error {
 		post.Body)
 
 	if err != nil {
-		log.Errorf("Could not save post: %v", err)
+		logger.Errorf("Could not save post: %v", err)
 		return err
 	}
 
@@ -289,7 +281,6 @@ func CreatePost(db *sql.DB, post Post) error {
 }
 
 func SavePost(db *sql.DB, post *Post) error {
-	log := logrus.New()
 
 	_, err := db.Exec(`
 	UPDATE posts SET
@@ -301,7 +292,7 @@ func SavePost(db *sql.DB, post *Post) error {
 		post.ID)
 
 	if err != nil {
-		log.Errorf("Could not save post: %v", err)
+		logger.Errorf("Could not save post: %v", err)
 		return err
 	}
 
@@ -310,14 +301,13 @@ func SavePost(db *sql.DB, post *Post) error {
 }
 
 func DeletePost(db *sql.DB, postID string) error {
-	log := logrus.New()
 
 	_, err := db.Exec(`
 	DELETE FROM posts WHERE id=?
 	`, postID)
 
 	if err != nil {
-		log.Errorf("Could not delete post: %v", err)
+		logger.Errorf("Could not delete post: %v", err)
 		return err
 	}
 
@@ -339,20 +329,20 @@ func initDb(dbFile string) {
 	`
 	db, err := GetDb(dbFile)
 	if err != nil {
-		log.Fatalf("Could not init db at %s: %v", dbFile, err)
+		logger.Fatalf("Could not init db at %s: %v", dbFile, err)
 	}
 
 	res, err := db.Exec(createSql)
 	if err != nil {
-		log.Fatalf("Could not init db at %s: %v", dbFile, err)
+		logger.Fatalf("Could not init db at %s: %v", dbFile, err)
 	}
-	log.Debug(res)
+	logger.Debug(res)
 }
 
 func checkDb(dbFile string) bool {
 	db, err := GetDb(dbFile)
 	if err != nil {
-		log.Fatalf("Could not check db at %s", dbFile)
+		logger.Fatalf("Could not check db at %s", dbFile)
 	}
 	_, err = db.Exec(`SELECT count(*) FROM posts`)
 	return err == nil
@@ -370,14 +360,14 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 
 		err := rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 		var date time.Time
 
 		date, err = dateparse.ParseAny(dateStr)
 
 		if err != nil {
-			log.Errorf("Cannot parse date from %s", dateStr)
+			logger.Errorf("Cannot parse date from %s", dateStr)
 			p.PostDate = time.Now()
 		} else {
 			p.PostDate = date
