@@ -39,7 +39,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		logger.Debugf("Found %d posts", len(posts))
 
-		t, err := getTemplate(config.TemplatesDir, "index.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "index.html")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -48,6 +48,8 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 			return
 		}
 		logger.Debugf("index template: %v", t)
+
+		flash, _ := GetFlash(w, r, "flash")
 
 		err = t.ExecuteTemplate(w, "base", struct {
 			Posts      []*Post
@@ -58,6 +60,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 			TextHeight int
 			ShowSlug   bool
 			ShowExpand bool
+			Flash      string
 		}{
 			Posts:      posts,
 			Post:       post,
@@ -67,6 +70,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 			ShowSlug:   false,
 			TextHeight: 10,
 			ShowExpand: true,
+			Flash:      flash,
 		})
 
 		if err != nil {
@@ -86,7 +90,7 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		logger.Debugf("Found %d posts", len(posts))
 
-		t, err := getTemplate(config.TemplatesDir, "base/rss.xml", w, r)
+		t, err := getTemplate(config.TemplatesDir, "base/rss.xml")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -97,12 +101,17 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/xml")
 		w.Write([]byte(`<?xml version="1.0" encoding="utf-8" standalone="yes" ?>`))
+
+		flash, _ := GetFlash(w, r, "flash")
+
 		err = t.ExecuteTemplate(w, "rss", struct {
 			Posts  []*Post
 			Config Config
+			Flash  string
 		}{
 			Posts:  posts,
 			Config: config,
+			Flash:  flash,
 		})
 
 		if err != nil {
@@ -129,7 +138,7 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		t, err := getTemplate(config.TemplatesDir, "post_detail.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "post_detail.html")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -141,14 +150,18 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
+		flash, _ := GetFlash(w, r, "flash")
+
 		err = t.ExecuteTemplate(w, "base", struct {
 			Post    *Post
 			Config  Config
 			IsOwner bool
+			Flash   string
 		}{
 			Post:    post,
 			Config:  config,
 			IsOwner: isOwner,
+			Flash:   flash,
 		})
 
 		if err != nil {
@@ -216,7 +229,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 		}
 		logger.Debugf("Found %d posts", len(posts))
 
-		t, err := getTemplate(config.TemplatesDir, "dailydigest.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "dailydigest.html")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -227,18 +240,22 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		logger.Debugf("index template: %v", t)
 
+		flash, _ := GetFlash(w, r, "flash")
+
 		err = t.ExecuteTemplate(w, "base", struct {
 			Posts   []*Post
 			Post    Post
 			Config  Config
 			IsOwner bool
 			Date    time.Time
+			Flash   string
 		}{
 			Posts:   posts,
 			Post:    Post{},
 			Config:  config,
 			IsOwner: isOwner,
 			Date:    date,
+			Flash:   flash,
 		})
 
 		if err != nil {
@@ -254,7 +271,7 @@ func CreateArchiveYearMonthFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		archiveData := GetArchiveYearMonths(db)
 
-		t, err := getTemplate(config.TemplatesDir, "archive_years.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "archive_years.html")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -263,12 +280,16 @@ func CreateArchiveYearMonthFunc(config Config, db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		flash, _ := GetFlash(w, r, "flash")
+
 		err = t.ExecuteTemplate(w, "base", struct {
 			ArchiveData []ArchiveEntry
 			Config      Config
+			Flash       string
 		}{
 			ArchiveData: archiveData,
 			Config:      config,
+			Flash:       flash,
 		})
 
 		if err != nil {
@@ -299,7 +320,7 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		for _, p := range posts {
 			p.User = user
 		}
-		t, err := getTemplate(config.TemplatesDir, "archive_posts.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "archive_posts.html")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -308,16 +329,20 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		flash, _ := GetFlash(w, r, "flash")
+
 		err = t.ExecuteTemplate(w, "base", struct {
 			Posts  []*Post
 			Config Config
 			Year   string
 			Month  string
+			Flash  string
 		}{
 			Posts:  posts,
 			Config: config,
 			Year:   year,
 			Month:  month,
+			Flash:  flash,
 		})
 
 		if err != nil {
@@ -334,13 +359,14 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		isOwner := checkIsOwner(config, r)
 
 		var posts []*Post
-		t, err := getTemplate(config.TemplatesDir, "post_list.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "post_list.html")
 
 		// postOpts := GetPostOpts{Limit: 10}
 		term := r.PostFormValue("s")
 		if term == "" {
 			term = r.URL.Query().Get("s")
 		}
+		flash, _ := GetFlash(w, r, "flash")
 
 		if term == "" {
 			err = t.ExecuteTemplate(w, "base", struct {
@@ -348,11 +374,13 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 				Config  Config
 				Title   string
 				IsOwner bool
+				Flash   string
 			}{
 				Posts:   posts,
 				Config:  config,
 				Title:   fmt.Sprintf("Search"),
 				IsOwner: isOwner,
+				Flash:   flash,
 			})
 			return
 		}
@@ -387,11 +415,13 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			Config  Config
 			Title   string
 			IsOwner bool
+			Flash   string
 		}{
 			Posts:   posts,
 			Config:  config,
 			Title:   fmt.Sprintf("Posts found for '%s'", term),
 			IsOwner: isOwner,
+			Flash:   flash,
 		})
 
 		if err != nil {
@@ -410,7 +440,7 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		posts := GetTaggedPosts(db, tag)
 		logger.Debugf("tagged posts: %d", len(posts))
-		t, err := getTemplate(config.TemplatesDir, "post_list.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "post_list.html")
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -421,16 +451,20 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
+		flash, _ := GetFlash(w, r, "flash")
+
 		err = t.ExecuteTemplate(w, "base", struct {
 			Posts   []*Post
 			Config  Config
 			Title   string
 			IsOwner bool
+			Flash   string
 		}{
 			Posts:   posts,
 			Config:  config,
 			Title:   fmt.Sprintf("Posts tagged with '%s'", tag),
 			IsOwner: isOwner,
+			Flash:   flash,
 		})
 
 		if err != nil {

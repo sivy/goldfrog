@@ -28,7 +28,7 @@ func CreateSigninPageFunc(
 				}
 			}
 
-			t, err := getTemplate(config.TemplatesDir, "base/redirect.html", w, r)
+			t, err := getTemplate(config.TemplatesDir, "base/redirect.html")
 			if err != nil {
 				logger.Errorf("Could not get template: %v", err)
 			}
@@ -46,7 +46,7 @@ func CreateSigninPageFunc(
 			return
 		}
 
-		t, err := getTemplate(config.TemplatesDir, "signin.html", w, r)
+		t, err := getTemplate(config.TemplatesDir, "signin.html")
 
 		if err != nil {
 			logger.Error(err)

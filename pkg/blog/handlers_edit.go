@@ -25,7 +25,7 @@ func CreateNewPostFunc(
 			}
 
 			logger.Info("Rendering New Post form")
-			t, err := getTemplate(config.TemplatesDir, "newpost.html", w, r)
+			t, err := getTemplate(config.TemplatesDir, "newpost.html")
 			if err != nil {
 				logger.Errorf("Could not get template: %v", err)
 			}
@@ -36,6 +36,8 @@ func CreateNewPostFunc(
 			tagStr := r.FormValue("tags")
 			tags := splitTags(tagStr)
 
+			flash, _ := GetFlash(w, r, "flash")
+
 			err = t.ExecuteTemplate(w, "pagebase", struct {
 				Config     Config
 				Post       Post
@@ -43,6 +45,7 @@ func CreateNewPostFunc(
 				IsOwner    bool
 				TextHeight int
 				ShowSlug   bool
+				Flash      string
 			}{
 				Config: config,
 				Post: Post{
@@ -55,6 +58,7 @@ func CreateNewPostFunc(
 				IsOwner:    true,
 				TextHeight: 20,
 				ShowSlug:   true,
+				Flash:      flash,
 			})
 			return
 		}
@@ -202,13 +206,17 @@ func CreateEditPostFunc(
 			postID := chi.URLParam(r, "postID")
 			logger.Debugf("Post %s", postID)
 
+			t, err := getTemplate(config.TemplatesDir, "editpost.html")
+			if err != nil {
+				logger.Errorf("Could not get template: %v", err)
+			}
+			logger.Debug(t)
+
 			post, err := GetPost(db, postID)
-			t, err := getTemplate(config.TemplatesDir, "editpost.html", w, r)
 
 			if err != nil {
 				logger.Error(err)
-				SetFlash(w, "flash",
-					fmt.Sprintf("An error occurred: %v", err))
+				flash := fmt.Sprintf("An error occurred: %v", err)
 
 				err = t.ExecuteTemplate(w, "base", struct {
 					Config     Config
@@ -218,6 +226,7 @@ func CreateEditPostFunc(
 					TextHeight int
 					ShowSlug   bool
 					ShowExpand bool
+					Flash      string
 				}{
 					Config:     config,
 					Post:       post,
@@ -226,6 +235,7 @@ func CreateEditPostFunc(
 					TextHeight: 20,
 					ShowSlug:   true,
 					ShowExpand: false,
+					Flash:      flash,
 				})
 			}
 			logger.Debugf("Found post %s", post.Title)
@@ -237,10 +247,7 @@ func CreateEditPostFunc(
 				IsAdmin:     true,
 			}
 
-			if err != nil {
-				logger.Errorf("Could not get template: %v", err)
-			}
-			logger.Debug(t)
+			flash, _ := GetFlash(w, r, "flash")
 
 			err = t.ExecuteTemplate(w, "base", struct {
 				Config     Config
@@ -250,6 +257,7 @@ func CreateEditPostFunc(
 				TextHeight int
 				ShowSlug   bool
 				ShowExpand bool
+				Flash      string
 			}{
 				Config:     config,
 				Post:       post,
@@ -258,6 +266,7 @@ func CreateEditPostFunc(
 				TextHeight: 20,
 				ShowSlug:   true,
 				ShowExpand: false,
+				Flash:      flash,
 			})
 			return
 		}

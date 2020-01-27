@@ -42,26 +42,26 @@ func hashtagger(args ...interface{}) template.HTML {
 	return template.HTML(s)
 }
 
-func makeFlashFunc(w http.ResponseWriter, r *http.Request) func(args ...interface{}) template.HTML {
-	return func(args ...interface{}) template.HTML {
-		flash, _ := GetFlash(w, r, "flash")
-		if flash != "" {
-			return template.HTML(
-				fmt.Sprintf("<div class='flash'>%s</div>", flash),
-			)
-		}
-		return template.HTML("")
-	}
-}
+// func makeFlashFunc(w http.ResponseWriter, r *http.Request) func(args ...interface{}) template.HTML {
+// 	logger.Debugf("make flash function with writer: %v", w)
+// 	return func(args ...interface{}) template.HTML {
+// 		flash, _ := GetFlash(w, r, "flash")
+// 		if flash != "" {
+// 			return template.HTML(
+// 				fmt.Sprintf("<div class='flash'>%s</div>", flash),
+// 			)
+// 		}
+// 		return template.HTML("")
+// 	}
+// }
 
-func getTemplate(templatesDir string, name string, w http.ResponseWriter, r *http.Request) (*template.Template, error) {
+func getTemplate(templatesDir string, name string) (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
 		"markdown":  markDowner,
 		"excerpt":   excerpter,
 		"escape":    htmlEscaper,
 		"hashtags":  hashtagger,
 		"striphtml": stripHTML,
-		"flash":     makeFlashFunc(w, r),
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 

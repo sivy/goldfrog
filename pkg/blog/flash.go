@@ -31,6 +31,7 @@ func GetFlash(w http.ResponseWriter, r *http.Request, name string) (string, erro
 	}
 	value := string(byteValue)
 	dc := &http.Cookie{Name: name, MaxAge: -1, Expires: time.Unix(1, 0)}
+	logger.Debugf("setting dc on writer %v", w)
 	http.SetCookie(w, dc)
 	return value, nil
 }
