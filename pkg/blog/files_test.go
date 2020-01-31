@@ -11,23 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetFrontMatterItem(t *testing.T) {
-	frontmatter := `
-title: blog post
-tags: bar, baz
-`
-
-	title := GetFrontMatterItem(frontmatter, "title")
-
-	assert.NotNil(t, title)
-	assert.Equal(t, title, "blog post")
-
-	tags := GetFrontMatterItem(frontmatter, "tags")
-	assert.NotNil(t, tags)
-	assert.Equal(t, tags, "bar, baz")
-
-}
-
 func TestParseFile(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -36,7 +19,7 @@ func TestParseFile(t *testing.T) {
 	}
 	path := filepath.Join(
 		cwd,
-		"../../tests/data/post.md")
+		"../../tests/data/2019-12-30-test-post.md")
 
 	post, err := ParseFile(path)
 
@@ -46,6 +29,20 @@ func TestParseFile(t *testing.T) {
 	assert.Equal(t, "test post", post.Title)
 	assert.Equal(t, []string{"test", "post", "hashtag"}, post.Tags)
 	assert.Equal(t, "Post body #hashtag", post.Body)
+
+	assert.Equal(t, "2019-12-30 22:24", post.PostDate.Format(POSTTIMESTAMPFMT))
+
+	assert.IsType(t, make(map[string]string), post.FrontMatter)
+	assert.Contains(t, post.FrontMatter, "twitter_id")
+	assert.Contains(t, post.FrontMatter, "mastodon_id")
+	assert.Contains(t, post.FrontMatter, "goodreads_id")
+
+	assert.Equal(t, "123", post.FrontMatter["twitter_id"])
+	assert.Equal(t, "abc", post.FrontMatter["mastodon_id"])
+	assert.Equal(t, "def", post.FrontMatter["goodreads_id"])
+
+	assert.Equal(t, "/2019/12/30/test-post", post.PermaLink())
+
 }
 
 func TestGetDateWithGoodDateStr(t *testing.T) {
