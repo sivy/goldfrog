@@ -40,7 +40,7 @@ func (repo *PostsRepo) ListPostFiles() []string {
 func (repo *PostsRepo) SavePostFile(post *Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
-		post.PostDate.Format("2006-01-02"),
+		post.PostDate.Format(POSTDATEFMT),
 		post.Slug,
 	)
 
@@ -57,14 +57,15 @@ func (repo *PostsRepo) SavePostFile(post *Post) error {
 }
 
 func (repo *PostsRepo) DeletePostFile(post *Post) error {
+	logger.Debugf("%v", post.PostDate.Format(POSTTIMESTAMPFMT))
 	filename := fmt.Sprintf(
 		"%s-%s.md",
-		post.PostDate.Format("2006-01-02"),
+		post.PostDate.Format(POSTDATEFMT),
 		post.Slug,
 	)
 
 	file := filepath.Join(repo.PostsDirectory, filename)
-	logger.Debugf("Write file: %s", file)
+	logger.Debugf("Delete file: %s", file)
 
 	err := os.Remove(file)
 	if err != nil {
@@ -75,19 +76,47 @@ func (repo *PostsRepo) DeletePostFile(post *Post) error {
 	return nil
 }
 
-// GetFrontMatterItem scans the yaml post header and
-// looks for a key matching `item`
-func GetFrontMatterItem(frontmatter string, item string) string {
-	re := regexp.MustCompile(fmt.Sprintf(`(?i)^%s:(.*)$`, item))
+/*
+GetFrontMatter soes a simple key: value parse on the
+"yaml" at the front of a post.
+*/
+func GetFrontMatter(frontmatter string) map[string]string {
+	requiredKeys := []string{
+		"title", "slug", "date",
+	}
+
+	re := regexp.MustCompile(fmt.Sprintf(`(?i)^(.*?):(.*)$`))
+
+	var fm = make(map[string]string)
 
 	for _, line := range strings.Split(frontmatter, "\n") {
 		m := re.FindStringSubmatch(line)
 		if len(m) > 0 && m[1] != "" {
-			return strings.TrimSpace(m[1])
+			// normalize keys to lowercase
+			fm[strings.ToLower(strings.TrimSpace(m[1]))] = strings.TrimSpace(m[2])
 		}
 	}
-	return ""
+	for _, key := range requiredKeys {
+		if _, ok := fm[key]; !ok {
+			fm[key] = ""
+		}
+	}
+	return fm
 }
+
+// GetFrontMatterItem scans the yaml post header and
+// looks for a key matching `item`
+// func GetFrontMatterItem(frontmatter string, item string) string {
+// 	re := regexp.MustCompile(fmt.Sprintf(`(?i)^%s:(.*)$`, item))
+
+// 	for _, line := range strings.Split(frontmatter, "\n") {
+// 		m := re.FindStringSubmatch(line)
+// 		if len(m) > 0 && m[1] != "" {
+// 			return strings.TrimSpace(m[1])
+// 		}
+// 	}
+// 	return ""
+// }
 
 // read a markdown file with frontmatter into a Post
 func ParseFile(path string) (Post, error) {
@@ -95,7 +124,7 @@ func ParseFile(path string) (Post, error) {
 
 	filename := filepath.Base(path)
 
-	var post Post
+	var post = NewPost(PostOpts{})
 
 	if err != nil {
 		logger.Error(err)
@@ -109,15 +138,25 @@ func ParseFile(path string) (Post, error) {
 		return post, errors.New("Bad file format")
 	}
 
-	frontMatter := fileParts[0]
+	frontMatterStr := fileParts[0]
+	frontMatter := GetFrontMatter(frontMatterStr)
+
+	if err != nil {
+		logger.Errorf("Could not parse frontmatter! %v", err)
+		return NewPost(PostOpts{}), err
+	}
+	post.FrontMatter = frontMatter
 	// logger.Debug(frontMatter)
 	body := fileParts[1]
 	// logger.Debug(body)
 
-	slug := GetFrontMatterItem(frontMatter, "slug")
-	title := GetFrontMatterItem(frontMatter, "title")
+	slug := frontMatter["slug"]
+	// if slugIface, ok := frontMatter["slug"]; ok {
+	// 	slug := slugIface
+	// }
+	title := frontMatter["title"]
 
-	dateStr := GetFrontMatterItem(frontMatter, "date")
+	dateStr := frontMatter["date"]
 	date, err := getPostDate(dateStr, filename)
 
 	if slug == "" {
@@ -130,8 +169,13 @@ func ParseFile(path string) (Post, error) {
 	body = strings.TrimSpace(body)
 	post.Body = body
 
-	tagStr := GetFrontMatterItem(frontMatter, "tags")
-	tagList := splitTags(tagStr)
+	var tagList []string
+	if tagStr, ok := frontMatter["tags"]; ok {
+		tagList = splitTags(tagStr)
+	} else {
+		tagList = []string{}
+	}
+
 	var tags []string
 	for _, t := range tagList {
 		tags = append(tags, strings.TrimSpace(t))
@@ -195,7 +239,7 @@ func getPostDate(dateStr string, filename string) (time.Time, error) {
 
 	dateStr = fmt.Sprintf("%s-%s-%s", year, month, day)
 	logger.Debugf("Got dateStr: %s", dateStr)
-	return time.Parse("2006-01-02", dateStr)
+	return time.Parse(POSTDATEFMT, dateStr)
 }
 
 func getPostSlugFromFile(filename string) string {
