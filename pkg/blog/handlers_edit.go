@@ -48,12 +48,12 @@ func CreateNewPostFunc(
 				Flash      string
 			}{
 				Config: config,
-				Post: Post{
+				Post: NewPost(PostOpts{
 					Title: title,
 					Body:  body,
 					Slug:  slug,
 					Tags:  tags,
-				},
+				}),
 				FormAction: "/new",
 				IsOwner:    true,
 				TextHeight: 20,
@@ -113,13 +113,13 @@ func CreateNewPostFunc(
 				-1)
 		}
 
-		p := Post{
+		p := NewPost(PostOpts{
 			Title:    title,
 			Tags:     splitTags(tags),
 			Body:     body,
 			Slug:     slug,
 			PostDate: time.Now(),
-		}
+		})
 
 		logger.Debug(p)
 		p.Tags = updateTags(p.Body, p.Tags)
@@ -379,16 +379,24 @@ func CreateDeletePostFunc(
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			http.Redirect(w, r, "/", http.StatusFound)
-			// redirect(w, config.TemplatesDir, "/")
 		}
 
 		postID := r.PostFormValue("postID")
+		logger.Infof("Delete post: %s", postID)
 
 		post, err := GetPost(db, postID)
+		if err != nil {
+			logger.Errorf("Could not find post to delete: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Could not find post to delete: %v", err))
+			http.Redirect(w, r, "/edit/"+postID, http.StatusSeeOther)
+		}
+		logger.Debugf("post: %s date: %s", post.Title, post.PostDate.Format(POSTTIMESTAMPFMT))
 
 		err = DeletePost(db, postID)
 		if err != nil {
 			logger.Errorf("Could not delete post: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Could not delete post: %v", err))
+			http.Redirect(w, r, "/edit/"+postID, http.StatusSeeOther)
 		}
 
 		err = repo.DeletePostFile(post)

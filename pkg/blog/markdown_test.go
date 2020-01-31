@@ -33,7 +33,7 @@ ok?
 }
 
 func TestPostMardowning(t *testing.T) {
-	post := Post{
+	post := NewPost(PostOpts{
 		Body: `
 this is a list:
 
@@ -42,7 +42,7 @@ this is a list:
 
 ok?
 `,
-	}
+	})
 	output := fmt.Sprintf("%s", markDowner(post.Body))
 	assert.Contains(t, output, "<li>")
 	output = fmt.Sprintf("%s", hashtagger(output))
