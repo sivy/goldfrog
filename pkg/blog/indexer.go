@@ -11,7 +11,6 @@ import (
 func IndexPosts(postsDir string, dbFile string, verbose bool) {
 	logger := logrus.New()
 
-	logger.Infof("Indexing posts in %s to %s", postsDir, dbFile)
 	logger.Debugf("Checking db at %s", dbFile)
 
 	if !checkDb(dbFile) {
