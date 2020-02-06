@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/go-chi/chi"
 )
@@ -114,11 +113,10 @@ func CreateNewPostFunc(
 		}
 
 		p := NewPost(PostOpts{
-			Title:    title,
-			Tags:     splitTags(tags),
-			Body:     body,
-			Slug:     slug,
-			PostDate: time.Now(),
+			Title: title,
+			Tags:  splitTags(tags),
+			Body:  body,
+			Slug:  slug,
 		})
 
 		logger.Debug(p)
@@ -143,7 +141,7 @@ func CreateNewPostFunc(
 			return
 		}
 
-		err = CreatePost(db, p)
+		err = CreatePost(db, &p)
 		if err != nil {
 			logger.Errorf("Could not create post file: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not save post file: %v", err))
@@ -161,9 +159,9 @@ func CreateNewPostFunc(
 			return
 		}
 
-		crossPosters := MakeCrossPosters(config)
+		crossPosters := MakeSyndicators(config)
 
-		var hooks = make([]CrossPoster, 0)
+		var hooks = make([]Hook, 0)
 
 		if r.PostFormValue("twitter") == "on" {
 			hooks = append(hooks, crossPosters["twitter"])
@@ -185,6 +183,23 @@ func CreateNewPostFunc(
 			go worker(hook, &p, false, &wg)
 		}
 		wg.Wait()
+
+		err = SavePost(db, &p)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing (%v)",
+				err))
+		}
+
+		err = repo.SavePostFile(&p)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing on disk (%v)",
+				err))
+		}
+
 		http.Redirect(w, r, "/", http.StatusFound)
 		// redirect(w, config.TemplatesDir, "/")
 		return
@@ -340,11 +355,9 @@ func CreateEditPostFunc(
 			logger.Errorf("Could not save post: %v", err)
 		}
 
-		post.Body = "Updated: " + post.Body
+		crossPosters := MakeSyndicators(config)
 
-		crossPosters := MakeCrossPosters(config)
-
-		var hooks = make([]CrossPoster, 0)
+		var hooks = make([]Hook, 0)
 
 		if r.PostFormValue("twitter") == "on" {
 			hooks = append(hooks, crossPosters["twitter"])
@@ -365,7 +378,26 @@ func CreateEditPostFunc(
 			wg.Add(1)
 			go worker(hook, post, false, &wg)
 		}
+		logger.Debug("Waiting...")
 		wg.Wait()
+
+		logger.Debugf("post fm after hooks: %v", post.FrontMatter)
+
+		err = SavePost(db, post)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing (%v)",
+				err))
+		}
+
+		err = repo.SavePostFile(post)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing on disk (%v)",
+				err))
+		}
 
 		// redirect(w, config.TemplatesDir, post.PermaLink())
 		http.Redirect(w, r, post.PermaLink(), http.StatusFound)
@@ -406,13 +438,5 @@ func CreateDeletePostFunc(
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		// redirect(w, config.TemplatesDir, "/")
-	}
-}
-
-func worker(hook CrossPoster, post *Post, linkOnly bool, wg *sync.WaitGroup) {
-	defer wg.Done()
-	postedUrl := hook.SendPost(post, linkOnly)
-	if postedUrl != "" {
-		logger.Infof("Posted message: %s", postedUrl)
 	}
 }

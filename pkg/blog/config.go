@@ -1,5 +1,9 @@
 package blog
 
+import (
+	"github.com/sivy/goldfrog/pkg/syndication"
+)
+
 type Config struct {
 	Blog struct {
 		Title   string `json:"title" yaml:"title"`
@@ -44,19 +48,7 @@ type Config struct {
 		Port     string `yaml:"port"`
 	} `yaml:"server"`
 
-	Twitter struct {
-		ClientKey    string `yaml:"clientkey"`
-		ClientSecret string `yaml:"clientsecret"`
-		AccessKey    string `yaml:"acceskey"`
-		AccessSecret string `yaml:"accessecret"`
-	} `yaml:"twitter"`
+	syndication.TwitterOpts `yaml:"twitter"`
 
-	Mastodon struct {
-		Site         string `yaml:"site"`
-		ClientID     string `yaml:"clientid"`
-		ClientSecret string `yaml:"clientsecret"`
-		AccessToken  string `yaml:"accesstoken"`
-		UserEmail    string `yaml:"useremail"`
-		UserPassword string `yaml:"userpassword"`
-	} `yaml:"mastodon"`
+	syndication.MastodonOpts `yaml:"mastodon"`
 }

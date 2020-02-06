@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -19,11 +20,17 @@ const (
 	HASHTAGRE string = `(?:\s|\A)#[[:alnum:]]+`
 )
 
-type PostsRepo struct {
+type PostsRepo interface {
+	ListPostFiles() []string
+	SavePostFile(post *Post) error
+	DeletePostFile(post *Post) error
+}
+
+type FilePostsRepo struct {
 	PostsDirectory string
 }
 
-func (repo *PostsRepo) ListPostFiles() []string {
+func (repo *FilePostsRepo) ListPostFiles() []string {
 	logger.Debugf("listing files in %s", repo.PostsDirectory)
 
 	files := make([]string, 0)
@@ -37,7 +44,7 @@ func (repo *PostsRepo) ListPostFiles() []string {
 	return files
 }
 
-func (repo *PostsRepo) SavePostFile(post *Post) error {
+func (repo *FilePostsRepo) SavePostFile(post *Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
 		post.PostDate.Format(POSTDATEFMT),
@@ -56,7 +63,7 @@ func (repo *PostsRepo) SavePostFile(post *Post) error {
 	return nil
 }
 
-func (repo *PostsRepo) DeletePostFile(post *Post) error {
+func (repo *FilePostsRepo) DeletePostFile(post *Post) error {
 	logger.Debugf("%v", post.PostDate.Format(POSTTIMESTAMPFMT))
 	filename := fmt.Sprintf(
 		"%s-%s.md",
@@ -77,7 +84,7 @@ func (repo *PostsRepo) DeletePostFile(post *Post) error {
 }
 
 /*
-GetFrontMatter soes a simple key: value parse on the
+GetFrontMatter does a simple key: value parse on the
 "yaml" at the front of a post.
 */
 func GetFrontMatter(frontmatter string) map[string]string {
@@ -85,17 +92,19 @@ func GetFrontMatter(frontmatter string) map[string]string {
 		"title", "slug", "date",
 	}
 
-	re := regexp.MustCompile(fmt.Sprintf(`(?i)^(.*?):(.*)$`))
+	// re := regexp.MustCompile(fmt.Sprintf(`(?i)^(.*?):(.*)$`))
 
 	var fm = make(map[string]string)
 
-	for _, line := range strings.Split(frontmatter, "\n") {
-		m := re.FindStringSubmatch(line)
-		if len(m) > 0 && m[1] != "" {
-			// normalize keys to lowercase
-			fm[strings.ToLower(strings.TrimSpace(m[1]))] = strings.TrimSpace(m[2])
-		}
-	}
+	yaml.Unmarshal([]byte(frontmatter), &fm)
+
+	// for _, line := range strings.Split(frontmatter, "\n") {
+	// 	m := re.FindStringSubmatch(line)
+	// 	if len(m) > 0 && m[1] != "" {
+	// 		// normalize keys to lowercase
+	// 		fm[strings.ToLower(strings.TrimSpace(m[1]))] = strings.TrimSpace(m[2])
+	// 	}
+	// }
 	for _, key := range requiredKeys {
 		if _, ok := fm[key]; !ok {
 			fm[key] = ""

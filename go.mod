@@ -21,4 +21,5 @@ require (
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	google.golang.org/appengine v1.1.0
+	gopkg.in/yaml.v2 v2.2.4
 )

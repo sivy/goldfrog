@@ -3,7 +3,6 @@ package blog
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -267,18 +266,26 @@ func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Po
 	return posts
 }
 
-func CreatePost(db *sql.DB, post Post) error {
-
+func CreatePost(db *sql.DB, post *Post) error {
+	logger.Infof("-- Create new post: %v", post)
 	_, err := db.Exec(`
 	INSERT into posts (
-		slug, title, tags,
-		postdate, body
+		slug,
+		title,
+		tags,
+		postdate,
+		frontmatter,
+		body
 	) VALUES (
 		?, ?, ?,
-		datetime(), ?
+		datetime(),
+		?, ?
 	)
-	`, post.Slug, post.Title,
-		strings.Join(post.Tags, ","),
+	`, post.Slug,
+		post.Title,
+		post.TagString(),
+		// date
+		post.FrontMatterYAML(),
 		post.Body)
 
 	if err != nil {
@@ -286,18 +293,27 @@ func CreatePost(db *sql.DB, post Post) error {
 		return err
 	}
 
+	p, _ := GetPostBySlug(db, post.Slug)
+	logger.Debugf("created post: %v", p)
+
 	return nil
 
 }
 
 func SavePost(db *sql.DB, post *Post) error {
+	logger.Infof("-- Save post: %v", post)
+	logger.Debugf("-- frontmatter: %v", post.FrontMatterYAML())
 
 	_, err := db.Exec(`
 	UPDATE posts SET
-		title=?, tags=?, body=?
+		title=?,
+		tags=?,
+		frontmatter=?,
+		body=?
 	WHERE id=?
 	`, post.Title,
-		strings.Join(post.Tags, ","),
+		post.TagString(),
+		post.FrontMatterYAML(),
 		post.Body,
 		post.ID)
 
@@ -305,6 +321,11 @@ func SavePost(db *sql.DB, post *Post) error {
 		logger.Errorf("Could not save post: %v", err)
 		return err
 	}
+
+	logger.Debug("saved post, now load for sanity...")
+	p, _ := GetPostBySlug(db, post.Slug)
+
+	logger.Debugf("post: %v", p)
 
 	return nil
 
@@ -326,7 +347,7 @@ func DeletePost(db *sql.DB, postID string) error {
 
 // func paginatePosts(db *sql.DB, )
 
-func initDb(dbFile string) {
+func initDb(dbFile string) error {
 	createSql := `
 	CREATE TABLE IF NOT EXISTS posts (
 		id integer primary key,
@@ -341,13 +362,16 @@ func initDb(dbFile string) {
 	db, err := GetDb(dbFile)
 	if err != nil {
 		logger.Fatalf("Could not init db at %s: %v", dbFile, err)
+		return err
 	}
 
 	res, err := db.Exec(createSql)
 	if err != nil {
 		logger.Fatalf("Could not init db at %s: %v", dbFile, err)
+		return err
 	}
 	logger.Debug(res)
+	return nil
 }
 
 func checkDb(dbFile string) bool {

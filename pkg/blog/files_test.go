@@ -45,6 +45,26 @@ func TestParseFile(t *testing.T) {
 
 }
 
+func TestPostToString(t *testing.T) {
+	p := NewPost(PostOpts{
+		Title: "the title",
+		Slug:  "the-title",
+		Tags:  []string{"tag"},
+		FrontMatter: map[string]string{
+			"twitter_url":  "twitter url",
+			"mastodon_url": "mastodon url",
+		},
+	})
+	assert.NotNil(t, p)
+	postStr := p.ToString()
+
+	assert.Contains(t, postStr, "title: the title")
+	assert.Contains(t, postStr, "slug: the-title")
+	assert.Contains(t, postStr, "tags: tag")
+	assert.Contains(t, postStr, "twitter_url: twitter url")
+	assert.Contains(t, postStr, "mastodon_url: mastodon url")
+}
+
 func TestGetDateWithGoodDateStr(t *testing.T) {
 	dt, err := getPostDate("2019-12-31 11:59:59", "2020-01-01-happy-new-years.md")
 
