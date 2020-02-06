@@ -1,10 +1,8 @@
 package blog
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -130,60 +128,60 @@ func TestGetHashTags(t *testing.T) {
 	assert.Empty(t, res)
 }
 
-func TestMicroMessage(t *testing.T) {
-	opts := MicroMessageOpts{
-		Title:     "Some Title",
-		PermaLink: "http://example.com/YYYY/MM/DD/some-title",
-		MaxLength: 280,
-		Tags:      []string{"tag1", "tag2"},
-	}
+// func TestMicroMessage(t *testing.T) {
+// 	opts := MicroMessageOpts{
+// 		Title:     "Some Title",
+// 		PermaLink: "http://example.com/YYYY/MM/DD/some-title",
+// 		MaxLength: 280,
+// 		Tags:      []string{"tag1", "tag2"},
+// 	}
 
-	source := `
-But I must explain to you how all this mistaken idea of denouncing pleasure and
-praising pain was born and I will give you a complete account of the system.
+// 	source := `
+// But I must explain to you how all this mistaken idea of denouncing pleasure and
+// praising pain was born and I will give you a complete account of the system.
 
-And  expound the actual teachings of the great explorer of the truth, the
-master-builder of human happiness. No one rejects, dislikes, or avoids pleasure
-itself, because it is pleasure, but because those who do not know how to pursue
-pleasure rationally encounter consequences that are extremely painful.
+// And  expound the actual teachings of the great explorer of the truth, the
+// master-builder of human happiness. No one rejects, dislikes, or avoids pleasure
+// itself, because it is pleasure, but because those who do not know how to pursue
+// pleasure rationally encounter consequences that are extremely painful.
 
-Nor again is there anyone who loves or pursues or desires to obtain pain of itself,
-because it is pain, but because occasionally circumstances occur in which toil and
-pain can procure him some great pleasure. To take a trivial example, which of us ever
-undertakes laborious physical exercise, except to obtain some advantage from it?
+// Nor again is there anyone who loves or pursues or desires to obtain pain of itself,
+// because it is pain, but because occasionally circumstances occur in which toil and
+// pain can procure him some great pleasure. To take a trivial example, which of us ever
+// undertakes laborious physical exercise, except to obtain some advantage from it?
 
-But who has any right to find fault with a man who chooses to enjoy a pleasure that
-has no annoying consequences, or one who avoids a pain that produces no resultant
-pleasure?`
+// But who has any right to find fault with a man who chooses to enjoy a pleasure that
+// has no annoying consequences, or one who avoids a pain that produces no resultant
+// pleasure?`
 
-	output := makeMicroMessage(source, opts)
-	assert.Contains(t, output, opts.Title)
-	assert.Contains(t, output, opts.PermaLink)
-	assert.Contains(t, output, "#tag1 #tag2")
-	// assert.Nil(t, output)
-}
+// 	output := makeMicroMessage(source, opts)
+// 	assert.Contains(t, output, opts.Title)
+// 	assert.Contains(t, output, opts.PermaLink)
+// 	assert.Contains(t, output, "#tag1 #tag2")
+// 	// assert.Nil(t, output)
+// }
 
-func TestNoteMicroMessage(t *testing.T) {
-	opts := MicroMessageOpts{
-		ShortID:   "txt-abc123",
-		MaxLength: 280,
-		Tags:      []string{"tag1", "tag2"},
-	}
+// func TestNoteMicroMessage(t *testing.T) {
+// 	opts := MicroMessageOpts{
+// 		ShortID:   "txt-abc123",
+// 		MaxLength: 280,
+// 		Tags:      []string{"tag1", "tag2"},
+// 	}
 
-	// titleLen := len(title)
-	// linkLen := len(link)
+// 	// titleLen := len(title)
+// 	// linkLen := len(link)
 
-	source := `
-But I must explain to you how all this mistaken idea of denouncing pleasure and
-praising pain was born and I will give you a complete account of the system.
-`
+// 	source := `
+// But I must explain to you how all this mistaken idea of denouncing pleasure and
+// praising pain was born and I will give you a complete account of the system.
+// `
 
-	output := makeMicroMessage(source, opts)
-	assert.Contains(
-		t, output, fmt.Sprintf("(monkinetic %s)", opts.ShortID))
-	assert.Contains(
-		t, output, "#tag1 #tag2")
-	assert.Contains(
-		t, output, strings.TrimSpace(source))
-	// assert.Nil(t, output)
-}
+// 	output := makeMicroMessage(source, opts)
+// 	assert.Contains(
+// 		t, output, fmt.Sprintf("(monkinetic %s)", opts.ShortID))
+// 	assert.Contains(
+// 		t, output, "#tag1 #tag2")
+// 	assert.Contains(
+// 		t, output, strings.TrimSpace(source))
+// 	// assert.Nil(t, output)
+// }

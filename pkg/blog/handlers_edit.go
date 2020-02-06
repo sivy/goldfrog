@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/go-chi/chi"
+	"github.com/sivy/goldfrog/pkg/syndication"
 )
 
 func CreateNewPostFunc(
@@ -159,30 +159,30 @@ func CreateNewPostFunc(
 			return
 		}
 
-		crossPosters := MakeSyndicators(config)
+		// crossPosters := syndication.MakeSyndicators(config)
 
-		var hooks = make([]Hook, 0)
+		// var hooks = make([]Hook, 0)
 
-		if r.PostFormValue("twitter") == "on" {
-			hooks = append(hooks, crossPosters["twitter"])
-		}
+		// if r.PostFormValue("twitter") == "on" {
+		// 	hooks = append(hooks, crossPosters["twitter"])
+		// }
 
-		if r.PostFormValue("mastodon") == "on" {
-			hooks = append(hooks, crossPosters["mastodon"])
-		}
+		// if r.PostFormValue("mastodon") == "on" {
+		// 	hooks = append(hooks, crossPosters["mastodon"])
+		// }
 
-		// always do webmentions
-		if crossPosters["webmention"] != nil {
-			hooks = append(hooks, crossPosters["webmention"])
-		}
+		// // always do webmentions
+		// if crossPosters["webmention"] != nil {
+		// 	hooks = append(hooks, crossPosters["webmention"])
+		// }
 
-		var wg sync.WaitGroup
-		for _, hook := range hooks {
-			logger.Debugf("Adding worker for hook %v", hook)
-			wg.Add(1)
-			go worker(hook, &p, false, &wg)
-		}
-		wg.Wait()
+		// var wg sync.WaitGroup
+		// for _, hook := range hooks {
+		// 	logger.Debugf("Adding worker for hook %v", hook)
+		// 	wg.Add(1)
+		// 	go worker(hook, &p, false, &wg)
+		// }
+		// wg.Wait()
 
 		err = SavePost(db, &p)
 		if err != nil {
@@ -355,31 +355,35 @@ func CreateEditPostFunc(
 			logger.Errorf("Could not save post: %v", err)
 		}
 
-		crossPosters := MakeSyndicators(config)
-
-		var hooks = make([]Hook, 0)
+		includeHooks := make(map[string]bool)
+		synOpts := syndication.SyndicateConfig{}
 
 		if r.PostFormValue("twitter") == "on" {
-			hooks = append(hooks, crossPosters["twitter"])
+			includeHooks["twitter"] = true
+			synOpts.Twitter = config.TwitterOpts
 		}
 
 		if r.PostFormValue("mastodon") == "on" {
-			hooks = append(hooks, crossPosters["mastodon"])
+			includeHooks["mastodon"] = true
+			synOpts.Mastodon = config.MastodonOpts
 		}
 
 		// always do webmentions
-		if crossPosters["webmention"] != nil {
-			hooks = append(hooks, crossPosters["webmention"])
+		if config.WebMentionEnabled {
+			synOpts.WebMention = syndication.WebmentionOpts{}
+			includeHooks["webmention"] = true
 		}
 
-		var wg sync.WaitGroup
-		for _, hook := range hooks {
-			logger.Debugf("Adding worker for hook %v", hook)
-			wg.Add(1)
-			go worker(hook, post, false, &wg)
+		// don't depend on updating a reference to a Post
+		postData := syndication.PostData{
+			Title:       post.Title,
+			Slug:        post.Slug,
+			PostDate:    post.PostDate,
+			Tags:        post.Tags,
+			Body:        post.Body,
+			FrontMatter: post.FrontMatter,
 		}
-		logger.Debug("Waiting...")
-		wg.Wait()
+		syndication.Syndicate(synOpts, includeHooks, postData)
 
 		logger.Debugf("post fm after hooks: %v", post.FrontMatter)
 

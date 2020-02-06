@@ -20,31 +20,31 @@ type TwitterPoster struct {
 	AccessKey    string
 	AccessSecret string
 	LinkFormat   string
+	UserID       string
+	MaxLen       int
 }
 
-func (tp *TwitterPoster) formatMessage(postData *PostData) string {
-	if opts.NumParas == 0 {
-		opts.NumParas = -1
-	}
+func (tp *TwitterPoster) FormatMessage(postData PostData) string {
 
-	source = stripHTML(markDowner(source))
+	source := stripHTML(markDowner(postData.Body))
 	var title string
 	var link string
 
-	if opts.Title != "" {
-		title = opts.Title
+	if postData.Title != "" {
+		title = postData.Title
 	}
-	if opts.PermaLink != "" {
-		link = fmt.Sprintf("(%s)", opts.PermaLink)
+
+	if postData.PermaLink != "" {
+		link = fmt.Sprintf("(%s)", postData.PermaLink)
 	}
-	if opts.ShortID != "" {
-		link = fmt.Sprintf("(monkinetic %s)", opts.ShortID)
+	if postData.ShortID != "" {
+		link = fmt.Sprintf("(monkinetic %s)", postData.ShortID)
 	}
 
 	var fmtTagStr string
-	if len(opts.Tags) != 0 {
+	if len(postData.Tags) != 0 {
 		var fmtTags []string
-		for _, t := range opts.Tags {
+		for _, t := range postData.Tags {
 			if t == "" {
 				continue
 			}
@@ -57,7 +57,7 @@ func (tp *TwitterPoster) formatMessage(postData *PostData) string {
 	}
 
 	var messageParts []string
-	availableChars := opts.MaxLength
+	availableChars := tp.MaxLen
 	if title != "" {
 		availableChars -= len(title) + 2 // len(\n\n)
 	}
@@ -70,26 +70,16 @@ func (tp *TwitterPoster) formatMessage(postData *PostData) string {
 
 	// split paras
 	sourceParas := strings.Split(source, "\n\n")
-	var messageParas []string
 	var messageBody string
-	for n, para := range sourceParas {
-		if opts.NumParas < 0 {
-			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
-				messageParas = append(
-					messageParas, strings.TrimSpace(para))
-			} else {
-				break
-			}
-		} else if opts.NumParas > 0 && n <= opts.NumParas {
-			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
-				messageParas = append(
-					messageParas, strings.TrimSpace(para))
-			} else {
-				break
-			}
-		}
+
+	if len(source) < availableChars {
+		// if message fits, do it all
+		messageBody = source
+	} else {
+		// if it doesn't, only do first para
+		messageBody = sourceParas[0]
 	}
-	messageBody = strings.Join(messageParas, "\n\n")
+
 	// find closes para that fits in available length
 
 	if title != "" {
@@ -109,7 +99,7 @@ func (tp *TwitterPoster) formatMessage(postData *PostData) string {
 	return microMessage
 }
 
-func (tp *TwitterPoster) HandlePost(postData *PostData) {
+func (tp *TwitterPoster) HandlePost(postData PostData) {
 	logger.Infof("Handling Twitter crosspost...")
 	config := oauth1.NewConfig(
 		tp.ClientKey,
@@ -123,23 +113,7 @@ func (tp *TwitterPoster) HandlePost(postData *PostData) {
 	httpClient := config.Client(oauth1.NoContext, token)
 	client := twitter.NewClient(httpClient)
 
-	var content = tp.formatMessage(postData)
-
-	// if !linkOnly {
-	// 	content = post.Body
-	// }
-	opts := MicroMessageOpts{
-		MaxLength: twitterMaxMessageLen,
-	}
-
-	if postData.Title != "" {
-		opts.Title = postData.Title
-		opts.PermaLink = tp.BaseUrl + postData.PermaLink
-	} else {
-		opts.ShortID = postData.Slug
-	}
-
-	content = tp.formatMessage(postData, opts)
+	var content = tp.FormatMessage(postData)
 
 	tweet, _, err := client.Statuses.Update(
 		content, &twitter.StatusUpdateParams{})
@@ -148,7 +122,8 @@ func (tp *TwitterPoster) HandlePost(postData *PostData) {
 		fmt.Printf("%v", err)
 	}
 
-	post.FrontMatter["twitter_id"] = tweet.IDStr
+	var resultData = make(map[string]string)
+	resultData["twitter_id"] = tweet.IDStr
 
 	url := fmt.Sprintf(
 		"https://twitter.com/%s/status/%s",
@@ -156,20 +131,23 @@ func (tp *TwitterPoster) HandlePost(postData *PostData) {
 		tweet.IDStr)
 
 	// should be saved after these return
-	post.FrontMatter["twitter_url"] = url
+	resultData["twitter_url"] = url
 
-	logger.Debugf("Posted status: %s", url)
+	logger.Debugf("Post results: %v", resultData)
 }
 
-func (tp *TwitterPoster) LinkForID(config Config, id string) string {
-	return fmt.Sprintf(config.Twitter.LinkFormat, config.Twitter.UserID, id)
+func (tp *TwitterPoster) LinkForID(id string) string {
+
+	return fmt.Sprintf("https://twitter.com/%s/status/%s", tp.UserID, id)
 }
 
-func NewTwitterPoster(opts TwitterOpts) {
-	return TwitterPoster{
+func NewTwitterPoster(opts TwitterOpts) *TwitterPoster {
+	return &TwitterPoster{
 		ClientKey:    opts.ClientKey,
 		ClientSecret: opts.ClientSecret,
 		AccessKey:    opts.AccessKey,
 		AccessSecret: opts.AccessSecret,
+		UserID:       opts.UserID,
+		MaxLen:       280,
 	}
 }

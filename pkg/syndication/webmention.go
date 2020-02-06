@@ -5,15 +5,14 @@ import (
 )
 
 type WebMentionPoster struct {
-	// Config Config
 }
 
-func (wp *WebMentionPoster) HandlePost(postData *PostData, linkOnly bool) {
+func (wp *WebMentionPoster) HandlePost(postData PostData) {
 	logger.Infof("Handling WebMentions...")
 	client := webmention.NewWebMentionClient()
 	htmlText := string(markDowner(postData.Body))
 
-	sourceLink := wp.Config.Blog.Url // + post.PermaLink()
+	sourceLink := postData.PermaLink
 	links, err := client.FindLinks(htmlText)
 	if err != nil {
 		logger.Errorf("Could not get post links: %s", err)
@@ -21,4 +20,8 @@ func (wp *WebMentionPoster) HandlePost(postData *PostData, linkOnly bool) {
 	logger.Debugf("Found links: %v", links)
 	logger.Info("Sending WebMentions...")
 	client.SendWebMentions(sourceLink, links)
+}
+
+func NewWebMentionPoster(WebmentionOpts) *WebMentionPoster {
+	return &WebMentionPoster{}
 }

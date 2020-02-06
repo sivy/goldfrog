@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"sync"
-	"time"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
@@ -18,14 +17,9 @@ func init() {
 }
 
 type SyndicateConfig struct {
-}
-
-type PostData struct {
-	Title    string
-	Slug     string
-	PostDate time.Time
-	Tags     []string
-	Body     string
+	Twitter    TwitterOpts
+	Mastodon   MastodonOpts
+	WebMention WebmentionOpts
 }
 
 func Syndicate(config SyndicateConfig, includeSyndicators map[string]bool, postData PostData) map[string]string {
@@ -56,6 +50,7 @@ func Syndicate(config SyndicateConfig, includeSyndicators map[string]bool, postD
 	logger.Debug("Waiting...")
 	wg.Wait()
 
+	return make(map[string]string)
 }
 
 func worker(hook Hook, postData PostData, wg *sync.WaitGroup) {

@@ -2,9 +2,10 @@ package blog
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"strings"
 	"time"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 type Blog struct {
