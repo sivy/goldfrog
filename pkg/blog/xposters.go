@@ -14,7 +14,7 @@ import (
 )
 
 type CrossPoster interface {
-	SendPost(post *Post, linkOnly bool) string
+	SendPost(post *Post, linkOnly bool) map[string]string
 }
 
 type TwitterPoster struct {
@@ -25,7 +25,7 @@ type TwitterPoster struct {
 	AccessSecret string
 }
 
-func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
+func (tp *TwitterPoster) SendPost(post *Post) map[string]string {
 	logger.Infof("Handling Twitter crosspost...")
 	config := oauth1.NewConfig(
 		tp.Config.Twitter.ClientKey,
@@ -39,11 +39,8 @@ func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 	httpClient := config.Client(oauth1.NoContext, token)
 	client := twitter.NewClient(httpClient)
 
-	var content string
+	var content = post.Body
 
-	if !linkOnly {
-		content = post.Body
-	}
 	opts := MicroMessageOpts{
 		MaxLength: 280,
 	}
@@ -71,7 +68,10 @@ func (tp *TwitterPoster) SendPost(post *Post, linkOnly bool) string {
 		tweet.IDStr)
 
 	logger.Debugf("Posted status: %s", url)
-	return url
+	return map[string]string{
+		"twitter_id":  tweet.IDStr,
+		"twitter_url": url,
+	}
 }
 
 type MastodonPoster struct {
@@ -82,7 +82,7 @@ type MastodonPoster struct {
 	AccessToken  string
 }
 
-func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
+func (xp *MastodonPoster) SendPost(post *Post) map[string]string {
 	logger.Infof("Handling Mastodon crosspost...")
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       xp.Site,
@@ -91,10 +91,8 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 		AccessToken:  xp.AccessToken,
 	})
 
-	var content string
-	if !linkOnly {
-		content = post.Body
-	}
+	var content = post.Body
+
 	opts := MicroMessageOpts{
 		MaxLength: 280,
 	}
@@ -125,14 +123,17 @@ func (xp *MastodonPoster) SendPost(post *Post, linkOnly bool) string {
 		return ""
 	}
 	logger.Debugf("Posted status: %s", status.URL)
-	return status.URL
+	return map[string]string{
+		"mastodon_id":  status.ID,
+		"mastodon_url": status.URL,
+	}
 }
 
 type WebMentionPoster struct {
 	Config Config
 }
 
-func (wp *WebMentionPoster) SendPost(post *Post, linkOnly bool) string {
+func (wp *WebMentionPoster) SendPost(post *Post, linkOnly bool) map[string]string {
 	logger.Infof("Handling WebMentions...")
 	client := webmention.NewWebMentionClient()
 	htmlText := string(markDowner(post.Body))
@@ -147,7 +148,7 @@ func (wp *WebMentionPoster) SendPost(post *Post, linkOnly bool) string {
 	logger.Info("Sending WebMentions...")
 	client.SendWebMentions(sourceLink, links)
 
-	return post.PermaLink()
+	return make(map[string]string)
 }
 
 func MakeCrossPosters(config Config) map[string]CrossPoster {
