@@ -75,7 +75,7 @@ func NewPost(opts PostOpts) Post {
 	p := Post{
 		Title:    opts.Title,
 		Slug:     opts.Slug,
-		PostDate: opts.PostDate,
+		PostDate: time.Now(),
 		Tags:     opts.Tags,
 		Body:     opts.Body,
 	}
