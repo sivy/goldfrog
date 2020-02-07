@@ -47,7 +47,7 @@ func hashtagger(args ...interface{}) template.HTML {
 func tweetLinker(args ...interface{}) template.HTML {
 	config := args[0].(Config)
 	tweet_id := fmt.Sprintf("%s", args[1:])
-	poster := syndication.NewTwitterPoster(config.TwitterOpts)
+	poster := syndication.NewTwitterPoster(config.Twitter)
 	link := fmt.Sprintf(poster.LinkForID(tweet_id))
 	logger.Debugf("link: %s", link)
 	return template.HTML(link)
@@ -56,7 +56,7 @@ func tweetLinker(args ...interface{}) template.HTML {
 func tootLinker(args ...interface{}) template.HTML {
 	config := args[0].(Config)
 	toot_id := fmt.Sprintf("%s", args[1])
-	poster := syndication.NewMastodonPoster(config.MastodonOpts)
+	poster := syndication.NewMastodonPoster(config.Mastodon)
 	link := fmt.Sprintf(poster.LinkForID(toot_id))
 	logger.Debugf("link: %s", link)
 
