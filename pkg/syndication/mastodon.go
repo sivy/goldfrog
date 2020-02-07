@@ -97,7 +97,7 @@ func (xp *MastodonPoster) FormatMessage(postData PostData) string {
 	return microMessage
 }
 
-func (xp *MastodonPoster) HandlePost(postData PostData) {
+func (xp *MastodonPoster) HandlePost(postData PostData) map[string]string {
 	logger.Infof("Handling Mastodon crosspost...")
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       xp.Site,
@@ -127,19 +127,21 @@ func (xp *MastodonPoster) HandlePost(postData PostData) {
 	if err != nil {
 		logger.Error(err)
 	}
+	var resultData = make(map[string]string)
+	resultData["mastodon_id"] = string(status.ID)
+	resultData["mastodon_url"] = string(status.URL)
 
-	postData.FrontMatter["mastodon_id"] = string(status.ID)
-	postData.FrontMatter["mastodon_url"] = status.URL
-
-	logger.Debugf("Posted status: %s", status.URL)
+	logger.Debugf("Posted results: %v", resultData)
+	return resultData
 }
 
 func (xp *MastodonPoster) LinkForID(id string) string {
-	return fmt.Sprintf("%s/status/%s", xp.Site, id)
+	return fmt.Sprintf("%s/web/statuses/%s", xp.Site, id)
 }
 
 func NewMastodonPoster(opts MastodonOpts) *MastodonPoster {
 	return &MastodonPoster{
+		Site:         opts.Site,
 		ClientID:     opts.ClientID,
 		ClientSecret: opts.ClientSecret,
 		AccessToken:  opts.AccessToken,

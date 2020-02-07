@@ -9,7 +9,7 @@ import (
 )
 
 type Hook interface {
-	HandlePost(postData PostData)
+	HandlePost(postData PostData) map[string]string
 }
 
 type Syndicator interface {

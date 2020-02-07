@@ -7,7 +7,7 @@ import (
 type WebMentionPoster struct {
 }
 
-func (wp *WebMentionPoster) HandlePost(postData PostData) {
+func (wp *WebMentionPoster) HandlePost(postData PostData) map[string]string {
 	logger.Infof("Handling WebMentions...")
 	client := webmention.NewWebMentionClient()
 	htmlText := string(markDowner(postData.Body))
@@ -20,6 +20,8 @@ func (wp *WebMentionPoster) HandlePost(postData PostData) {
 	logger.Debugf("Found links: %v", links)
 	logger.Info("Sending WebMentions...")
 	client.SendWebMentions(sourceLink, links)
+
+	return make(map[string]string)
 }
 
 func NewWebMentionPoster(WebmentionOpts) *WebMentionPoster {

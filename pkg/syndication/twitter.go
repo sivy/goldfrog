@@ -99,7 +99,7 @@ func (tp *TwitterPoster) FormatMessage(postData PostData) string {
 	return microMessage
 }
 
-func (tp *TwitterPoster) HandlePost(postData PostData) {
+func (tp *TwitterPoster) HandlePost(postData PostData) map[string]string {
 	logger.Infof("Handling Twitter crosspost...")
 	config := oauth1.NewConfig(
 		tp.ClientKey,
@@ -134,6 +134,7 @@ func (tp *TwitterPoster) HandlePost(postData PostData) {
 	resultData["twitter_url"] = url
 
 	logger.Debugf("Post results: %v", resultData)
+	return resultData
 }
 
 func (tp *TwitterPoster) LinkForID(id string) string {

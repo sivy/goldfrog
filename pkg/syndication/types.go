@@ -27,8 +27,6 @@ type MastodonOpts struct {
 	ClientID     string `yaml:"clientid"`
 	ClientSecret string `yaml:"clientsecret"`
 	AccessToken  string `yaml:"accesstoken"`
-	UserEmail    string `yaml:"useremail"`
-	UserPassword string `yaml:"userpassword"`
 	LinkFormat   string `yaml:"linkformat"`
 }
 
