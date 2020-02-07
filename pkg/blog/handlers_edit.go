@@ -17,6 +17,7 @@ import (
 func CreateNewPostFunc(
 	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
 	logger.Debug("Creating new post form handler")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			if !checkIsOwner(config, r) {
@@ -112,17 +113,17 @@ func CreateNewPostFunc(
 				-1)
 		}
 
-		p := NewPost(PostOpts{
+		post := NewPost(PostOpts{
 			Title: title,
 			Tags:  splitTags(tags),
 			Body:  body,
 			Slug:  slug,
 		})
 
-		logger.Debug(p)
-		p.Tags = updateTags(p.Body, p.Tags)
+		logger.Debug(post)
+		post.Tags = updateTags(post.Body, post.Tags)
 
-		err = repo.SavePostFile(&p)
+		err = repo.SavePostFile(&post)
 		if err != nil {
 			logger.Errorf("Could not save post: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not save post: %v", err))
@@ -141,7 +142,7 @@ func CreateNewPostFunc(
 			return
 		}
 
-		err = CreatePost(db, &p)
+		err = CreatePost(db, &post)
 		if err != nil {
 			logger.Errorf("Could not create post file: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not save post file: %v", err))
@@ -159,32 +160,51 @@ func CreateNewPostFunc(
 			return
 		}
 
-		// crossPosters := syndication.MakeSyndicators(config)
+		updatePost, err := GetPostBySlug(db, post.Slug)
 
-		// var hooks = make([]Hook, 0)
+		if err != nil {
+			logger.Errorf("Post saved but syndication process could not run: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Post saved but syndication process could not run: %v", err))
+			http.Redirect(w, r, "/", http.StatusFound)
+		}
 
-		// if r.PostFormValue("twitter") == "on" {
-		// 	hooks = append(hooks, crossPosters["twitter"])
-		// }
+		includeHooks := make(map[string]bool)
+		synOpts := syndication.SyndicateConfig{}
 
-		// if r.PostFormValue("mastodon") == "on" {
-		// 	hooks = append(hooks, crossPosters["mastodon"])
-		// }
+		if r.PostFormValue("twitter") == "on" {
+			includeHooks["twitter"] = true
+			synOpts.Twitter = config.Twitter
+		}
 
-		// // always do webmentions
-		// if crossPosters["webmention"] != nil {
-		// 	hooks = append(hooks, crossPosters["webmention"])
-		// }
+		if r.PostFormValue("mastodon") == "on" {
+			includeHooks["mastodon"] = true
+			synOpts.Mastodon = config.Mastodon
+		}
 
-		// var wg sync.WaitGroup
-		// for _, hook := range hooks {
-		// 	logger.Debugf("Adding worker for hook %v", hook)
-		// 	wg.Add(1)
-		// 	go worker(hook, &p, false, &wg)
-		// }
-		// wg.Wait()
+		if config.WebMentionEnabled {
+			includeHooks["webmention"] = true
+			synOpts.WebMention = syndication.WebmentionOpts{}
+		}
 
-		err = SavePost(db, &p)
+		// don't depend on updating a reference to a Post
+		postData := syndication.PostData{
+			Title:       updatePost.Title,
+			Slug:        updatePost.Slug,
+			PostDate:    updatePost.PostDate,
+			Tags:        updatePost.Tags,
+			Body:        updatePost.Body,
+			FrontMatter: updatePost.FrontMatter,
+			PermaLink:   config.Blog.Url + updatePost.PermaLink(),
+		}
+		syndicationMeta := syndication.Syndicate(synOpts, includeHooks, postData)
+
+		logger.Debugf("new meta after hooks: %v", syndicationMeta)
+
+		for k, v := range syndicationMeta {
+			updatePost.FrontMatter[k] = v
+		}
+
+		err = SavePost(db, updatePost)
 		if err != nil {
 			logger.Error(err)
 			SetFlash(w, "flash", fmt.Sprintf(
@@ -192,7 +212,7 @@ func CreateNewPostFunc(
 				err))
 		}
 
-		err = repo.SavePostFile(&p)
+		err = repo.SavePostFile(updatePost)
 		if err != nil {
 			logger.Error(err)
 			SetFlash(w, "flash", fmt.Sprintf(
@@ -355,39 +375,51 @@ func CreateEditPostFunc(
 			logger.Errorf("Could not save post: %v", err)
 		}
 
+		updatePost, err := GetPostBySlug(db, post.Slug)
+
+		if err != nil {
+			logger.Errorf("Post saved but syndication process could not run: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Post saved but syndication process could not run: %v", err))
+			http.Redirect(w, r, "/", http.StatusFound)
+		}
+
 		includeHooks := make(map[string]bool)
 		synOpts := syndication.SyndicateConfig{}
 
 		if r.PostFormValue("twitter") == "on" {
 			includeHooks["twitter"] = true
-			synOpts.Twitter = config.TwitterOpts
+			synOpts.Twitter = config.Twitter
 		}
 
 		if r.PostFormValue("mastodon") == "on" {
 			includeHooks["mastodon"] = true
-			synOpts.Mastodon = config.MastodonOpts
+			synOpts.Mastodon = config.Mastodon
 		}
 
-		// always do webmentions
 		if config.WebMentionEnabled {
-			synOpts.WebMention = syndication.WebmentionOpts{}
 			includeHooks["webmention"] = true
+			synOpts.WebMention = syndication.WebmentionOpts{}
 		}
 
 		// don't depend on updating a reference to a Post
 		postData := syndication.PostData{
-			Title:       post.Title,
-			Slug:        post.Slug,
-			PostDate:    post.PostDate,
-			Tags:        post.Tags,
-			Body:        post.Body,
-			FrontMatter: post.FrontMatter,
+			Title:       updatePost.Title,
+			Slug:        updatePost.Slug,
+			PostDate:    updatePost.PostDate,
+			Tags:        updatePost.Tags,
+			Body:        updatePost.Body,
+			FrontMatter: updatePost.FrontMatter,
+			PermaLink:   config.Blog.Url + updatePost.PermaLink(),
 		}
-		syndication.Syndicate(synOpts, includeHooks, postData)
+		syndicationMeta := syndication.Syndicate(synOpts, includeHooks, postData)
 
-		logger.Debugf("post fm after hooks: %v", post.FrontMatter)
+		logger.Debugf("new meta after hooks: %v", syndicationMeta)
 
-		err = SavePost(db, post)
+		for k, v := range syndicationMeta {
+			updatePost.FrontMatter[k] = v
+		}
+
+		err = SavePost(db, updatePost)
 		if err != nil {
 			logger.Error(err)
 			SetFlash(w, "flash", fmt.Sprintf(
@@ -395,7 +427,7 @@ func CreateEditPostFunc(
 				err))
 		}
 
-		err = repo.SavePostFile(post)
+		err = repo.SavePostFile(updatePost)
 		if err != nil {
 			logger.Error(err)
 			SetFlash(w, "flash", fmt.Sprintf(
