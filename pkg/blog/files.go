@@ -150,10 +150,6 @@ func ParseFile(path string) (Post, error) {
 	frontMatterStr := fileParts[0]
 	frontMatter := GetFrontMatter(frontMatterStr)
 
-	if err != nil {
-		logger.Errorf("Could not parse frontmatter! %v", err)
-		return NewPost(PostOpts{}), err
-	}
 	post.FrontMatter = frontMatter
 	// logger.Debug(frontMatter)
 	body := fileParts[1]
