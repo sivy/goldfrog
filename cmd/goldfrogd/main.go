@@ -144,7 +144,7 @@ func runServer(
 		logger.Fatalf("Could not get db connection: %v", err)
 	}
 
-	repo := blog.PostsRepo{
+	repo := blog.FilePostsRepo{
 		PostsDirectory: config.PostsDir,
 	}
 
@@ -169,14 +169,14 @@ func runServer(
 		r.Mount("/feed.xml", blog.CreateRssFunc(config, db))
 		r.Mount("/search", blog.CreateSearchPageFunc(config, db))
 
-		r.Mount("/new", blog.CreateNewPostFunc(config, db, repo))
+		r.Mount("/new", blog.CreateNewPostFunc(config, db, &repo))
 		r.Mount(
 			"/edit/{postID}",
-			blog.CreateEditPostFunc(config, db, repo))
+			blog.CreateEditPostFunc(config, db, &repo))
 		r.Mount(
 			"/edit",
-			blog.CreateEditPostFunc(config, db, repo))
-		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, repo))
+			blog.CreateEditPostFunc(config, db, &repo))
+		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, &repo))
 
 		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile))
 		r.Mount("/signout", blog.CreateSignoutPageFunc(config, dbFile))

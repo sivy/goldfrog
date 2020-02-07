@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -19,11 +20,17 @@ const (
 	HASHTAGRE string = `(?:\s|\A)#[[:alnum:]]+`
 )
 
-type PostsRepo struct {
+type PostsRepo interface {
+	ListPostFiles() []string
+	SavePostFile(post *Post) error
+	DeletePostFile(post *Post) error
+}
+
+type FilePostsRepo struct {
 	PostsDirectory string
 }
 
-func (repo *PostsRepo) ListPostFiles() []string {
+func (repo *FilePostsRepo) ListPostFiles() []string {
 	logger.Debugf("listing files in %s", repo.PostsDirectory)
 
 	files := make([]string, 0)
@@ -37,10 +44,10 @@ func (repo *PostsRepo) ListPostFiles() []string {
 	return files
 }
 
-func (repo *PostsRepo) SavePostFile(post *Post) error {
+func (repo *FilePostsRepo) SavePostFile(post *Post) error {
 	filename := fmt.Sprintf(
 		"%s-%s.md",
-		post.PostDate.Format("2006-01-02"),
+		post.PostDate.Format(POSTDATEFMT),
 		post.Slug,
 	)
 
@@ -56,15 +63,16 @@ func (repo *PostsRepo) SavePostFile(post *Post) error {
 	return nil
 }
 
-func (repo *PostsRepo) DeletePostFile(post *Post) error {
+func (repo *FilePostsRepo) DeletePostFile(post *Post) error {
+	logger.Debugf("%v", post.PostDate.Format(POSTTIMESTAMPFMT))
 	filename := fmt.Sprintf(
 		"%s-%s.md",
-		post.PostDate.Format("2006-01-02"),
+		post.PostDate.Format(POSTDATEFMT),
 		post.Slug,
 	)
 
 	file := filepath.Join(repo.PostsDirectory, filename)
-	logger.Debugf("Write file: %s", file)
+	logger.Debugf("Delete file: %s", file)
 
 	err := os.Remove(file)
 	if err != nil {
@@ -75,19 +83,49 @@ func (repo *PostsRepo) DeletePostFile(post *Post) error {
 	return nil
 }
 
-// GetFrontMatterItem scans the yaml post header and
-// looks for a key matching `item`
-func GetFrontMatterItem(frontmatter string, item string) string {
-	re := regexp.MustCompile(fmt.Sprintf(`(?i)^%s:(.*)$`, item))
+/*
+GetFrontMatter does a simple key: value parse on the
+"yaml" at the front of a post.
+*/
+func GetFrontMatter(frontmatter string) map[string]string {
+	requiredKeys := []string{
+		"title", "slug", "date",
+	}
 
-	for _, line := range strings.Split(frontmatter, "\n") {
-		m := re.FindStringSubmatch(line)
-		if len(m) > 0 && m[1] != "" {
-			return strings.TrimSpace(m[1])
+	// re := regexp.MustCompile(fmt.Sprintf(`(?i)^(.*?):(.*)$`))
+
+	var fm = make(map[string]string)
+
+	yaml.Unmarshal([]byte(frontmatter), &fm)
+
+	// for _, line := range strings.Split(frontmatter, "\n") {
+	// 	m := re.FindStringSubmatch(line)
+	// 	if len(m) > 0 && m[1] != "" {
+	// 		// normalize keys to lowercase
+	// 		fm[strings.ToLower(strings.TrimSpace(m[1]))] = strings.TrimSpace(m[2])
+	// 	}
+	// }
+	for _, key := range requiredKeys {
+		if _, ok := fm[key]; !ok {
+			fm[key] = ""
 		}
 	}
-	return ""
+	return fm
 }
+
+// GetFrontMatterItem scans the yaml post header and
+// looks for a key matching `item`
+// func GetFrontMatterItem(frontmatter string, item string) string {
+// 	re := regexp.MustCompile(fmt.Sprintf(`(?i)^%s:(.*)$`, item))
+
+// 	for _, line := range strings.Split(frontmatter, "\n") {
+// 		m := re.FindStringSubmatch(line)
+// 		if len(m) > 0 && m[1] != "" {
+// 			return strings.TrimSpace(m[1])
+// 		}
+// 	}
+// 	return ""
+// }
 
 // read a markdown file with frontmatter into a Post
 func ParseFile(path string) (Post, error) {
@@ -95,7 +133,7 @@ func ParseFile(path string) (Post, error) {
 
 	filename := filepath.Base(path)
 
-	var post Post
+	var post = NewPost(PostOpts{})
 
 	if err != nil {
 		logger.Error(err)
@@ -109,15 +147,25 @@ func ParseFile(path string) (Post, error) {
 		return post, errors.New("Bad file format")
 	}
 
-	frontMatter := fileParts[0]
+	frontMatterStr := fileParts[0]
+	frontMatter := GetFrontMatter(frontMatterStr)
+
+	if err != nil {
+		logger.Errorf("Could not parse frontmatter! %v", err)
+		return NewPost(PostOpts{}), err
+	}
+	post.FrontMatter = frontMatter
 	// logger.Debug(frontMatter)
 	body := fileParts[1]
 	// logger.Debug(body)
 
-	slug := GetFrontMatterItem(frontMatter, "slug")
-	title := GetFrontMatterItem(frontMatter, "title")
+	slug := frontMatter["slug"]
+	// if slugIface, ok := frontMatter["slug"]; ok {
+	// 	slug := slugIface
+	// }
+	title := frontMatter["title"]
 
-	dateStr := GetFrontMatterItem(frontMatter, "date")
+	dateStr := frontMatter["date"]
 	date, err := getPostDate(dateStr, filename)
 
 	if slug == "" {
@@ -130,8 +178,13 @@ func ParseFile(path string) (Post, error) {
 	body = strings.TrimSpace(body)
 	post.Body = body
 
-	tagStr := GetFrontMatterItem(frontMatter, "tags")
-	tagList := splitTags(tagStr)
+	var tagList []string
+	if tagStr, ok := frontMatter["tags"]; ok {
+		tagList = splitTags(tagStr)
+	} else {
+		tagList = []string{}
+	}
+
 	var tags []string
 	for _, t := range tagList {
 		tags = append(tags, strings.TrimSpace(t))
@@ -195,7 +248,7 @@ func getPostDate(dateStr string, filename string) (time.Time, error) {
 
 	dateStr = fmt.Sprintf("%s-%s-%s", year, month, day)
 	logger.Debugf("Got dateStr: %s", dateStr)
-	return time.Parse("2006-01-02", dateStr)
+	return time.Parse(POSTDATEFMT, dateStr)
 }
 
 func getPostSlugFromFile(filename string) string {
@@ -269,111 +322,4 @@ func makeNoteSlug(content string) string {
 	h.Write([]byte(content))
 	str := fmt.Sprintf("%x", h.Sum(nil))
 	return fmt.Sprintf("txt-%s", str[0:7])
-}
-
-type MicroMessageOpts struct {
-	MaxLength int
-	Title     string
-	PermaLink string
-	ShortID   string
-	NumParas  int
-	Tags      []string
-}
-
-func makeMicroMessage(
-	source string, opts MicroMessageOpts) string {
-	/*
-		<Title optional
-
-		><Body
-
-		><Tags optional
-
-		><link>
-	*/
-
-	if opts.NumParas == 0 {
-		opts.NumParas = -1
-	}
-
-	source = stripHTML(markDowner(source))
-	var title string
-	var link string
-
-	if opts.Title != "" {
-		title = opts.Title
-	}
-	if opts.PermaLink != "" {
-		link = fmt.Sprintf("(%s)", opts.PermaLink)
-	}
-	if opts.ShortID != "" {
-		link = fmt.Sprintf("(monkinetic %s)", opts.ShortID)
-	}
-
-	var fmtTagStr string
-	if len(opts.Tags) != 0 {
-		var fmtTags []string
-		for _, t := range opts.Tags {
-			if t == "" {
-				continue
-			}
-			if regexp.MustCompile("#" + t).MatchString(source) {
-				continue
-			}
-			fmtTags = append(fmtTags, fmt.Sprintf("#%s", t))
-		}
-		fmtTagStr = strings.Join(fmtTags, " ")
-	}
-
-	var messageParts []string
-	availableChars := opts.MaxLength
-	if title != "" {
-		availableChars -= len(title) + 2 // len(\n\n)
-	}
-	if link != "" {
-		availableChars -= len(link) + 2 // len(\n\n)
-	}
-	if fmtTagStr != "" {
-		availableChars -= len(fmtTagStr) + 2 // len(\n\n)
-	}
-
-	// split paras
-	sourceParas := strings.Split(source, "\n\n")
-	var messageParas []string
-	var messageBody string
-	for n, para := range sourceParas {
-		if opts.NumParas < 0 {
-			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
-				messageParas = append(
-					messageParas, strings.TrimSpace(para))
-			} else {
-				break
-			}
-		} else if opts.NumParas > 0 && n <= opts.NumParas {
-			if len(strings.Join(messageParas, "\n\n"))+len(para) < availableChars {
-				messageParas = append(
-					messageParas, strings.TrimSpace(para))
-			} else {
-				break
-			}
-		}
-	}
-	messageBody = strings.Join(messageParas, "\n\n")
-	// find closes para that fits in available length
-
-	if title != "" {
-		messageParts = append(messageParts, title)
-	}
-	messageParts = append(messageParts, messageBody)
-
-	if link != "" {
-		messageParts = append(messageParts, link)
-	}
-	if fmtTagStr != "" {
-		messageParts = append(messageParts, fmtTagStr)
-	}
-
-	microMessage := strings.Join(messageParts, "\n\n")
-	logger.Debugf("microMessage: %s", microMessage)
-	return microMessage
 }

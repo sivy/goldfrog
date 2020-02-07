@@ -9,15 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/sivy/goldfrog/pkg/syndication"
 )
 
 func CreateNewPostFunc(
 	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
 	logger.Debug("Creating new post form handler")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			if !checkIsOwner(config, r) {
@@ -48,12 +48,12 @@ func CreateNewPostFunc(
 				Flash      string
 			}{
 				Config: config,
-				Post: Post{
+				Post: NewPost(PostOpts{
 					Title: title,
 					Body:  body,
 					Slug:  slug,
 					Tags:  tags,
-				},
+				}),
 				FormAction: "/new",
 				IsOwner:    true,
 				TextHeight: 20,
@@ -113,18 +113,17 @@ func CreateNewPostFunc(
 				-1)
 		}
 
-		p := Post{
-			Title:    title,
-			Tags:     splitTags(tags),
-			Body:     body,
-			Slug:     slug,
-			PostDate: time.Now(),
-		}
+		post := NewPost(PostOpts{
+			Title: title,
+			Tags:  splitTags(tags),
+			Body:  body,
+			Slug:  slug,
+		})
 
-		logger.Debug(p)
-		p.Tags = updateTags(p.Body, p.Tags)
+		logger.Debug(post)
+		post.Tags = updateTags(post.Body, post.Tags)
 
-		err = repo.SavePostFile(&p)
+		err = repo.SavePostFile(&post)
 		if err != nil {
 			logger.Errorf("Could not save post: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not save post: %v", err))
@@ -143,7 +142,7 @@ func CreateNewPostFunc(
 			return
 		}
 
-		err = CreatePost(db, p)
+		err = CreatePost(db, &post)
 		if err != nil {
 			logger.Errorf("Could not create post file: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not save post file: %v", err))
@@ -161,30 +160,66 @@ func CreateNewPostFunc(
 			return
 		}
 
-		crossPosters := MakeCrossPosters(config)
+		updatePost, err := GetPostBySlug(db, post.Slug)
 
-		var hooks = make([]CrossPoster, 0)
+		if err != nil {
+			logger.Errorf("Post saved but syndication process could not run: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Post saved but syndication process could not run: %v", err))
+			http.Redirect(w, r, "/", http.StatusFound)
+		}
+
+		includeHooks := make(map[string]bool)
+		synOpts := syndication.SyndicateConfig{}
 
 		if r.PostFormValue("twitter") == "on" {
-			hooks = append(hooks, crossPosters["twitter"])
+			includeHooks["twitter"] = true
+			synOpts.Twitter = config.Twitter
 		}
 
 		if r.PostFormValue("mastodon") == "on" {
-			hooks = append(hooks, crossPosters["mastodon"])
+			includeHooks["mastodon"] = true
+			synOpts.Mastodon = config.Mastodon
 		}
 
-		// always do webmentions
-		if crossPosters["webmention"] != nil {
-			hooks = append(hooks, crossPosters["webmention"])
+		if config.WebMentionEnabled {
+			includeHooks["webmention"] = true
+			synOpts.WebMention = syndication.WebmentionOpts{}
 		}
 
-		var wg sync.WaitGroup
-		for _, hook := range hooks {
-			logger.Debugf("Adding worker for hook %v", hook)
-			wg.Add(1)
-			go worker(hook, &p, false, &wg)
+		// don't depend on updating a reference to a Post
+		postData := syndication.PostData{
+			Title:       updatePost.Title,
+			Slug:        updatePost.Slug,
+			PostDate:    updatePost.PostDate,
+			Tags:        updatePost.Tags,
+			Body:        updatePost.Body,
+			FrontMatter: updatePost.FrontMatter,
+			PermaLink:   config.Blog.Url + updatePost.PermaLink(),
 		}
-		wg.Wait()
+		syndicationMeta := syndication.Syndicate(synOpts, includeHooks, postData)
+
+		logger.Debugf("new meta after hooks: %v", syndicationMeta)
+
+		for k, v := range syndicationMeta {
+			updatePost.FrontMatter[k] = v
+		}
+
+		err = SavePost(db, updatePost)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing (%v)",
+				err))
+		}
+
+		err = repo.SavePostFile(updatePost)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing on disk (%v)",
+				err))
+		}
+
 		http.Redirect(w, r, "/", http.StatusFound)
 		// redirect(w, config.TemplatesDir, "/")
 		return
@@ -340,32 +375,65 @@ func CreateEditPostFunc(
 			logger.Errorf("Could not save post: %v", err)
 		}
 
-		post.Body = "Updated: " + post.Body
+		updatePost, err := GetPostBySlug(db, post.Slug)
 
-		crossPosters := MakeCrossPosters(config)
+		if err != nil {
+			logger.Errorf("Post saved but syndication process could not run: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Post saved but syndication process could not run: %v", err))
+			http.Redirect(w, r, "/", http.StatusFound)
+		}
 
-		var hooks = make([]CrossPoster, 0)
+		includeHooks := make(map[string]bool)
+		synOpts := syndication.SyndicateConfig{}
 
 		if r.PostFormValue("twitter") == "on" {
-			hooks = append(hooks, crossPosters["twitter"])
+			includeHooks["twitter"] = true
+			synOpts.Twitter = config.Twitter
 		}
 
 		if r.PostFormValue("mastodon") == "on" {
-			hooks = append(hooks, crossPosters["mastodon"])
+			includeHooks["mastodon"] = true
+			synOpts.Mastodon = config.Mastodon
 		}
 
-		// always do webmentions
-		if crossPosters["webmention"] != nil {
-			hooks = append(hooks, crossPosters["webmention"])
+		if config.WebMentionEnabled {
+			includeHooks["webmention"] = true
+			synOpts.WebMention = syndication.WebmentionOpts{}
 		}
 
-		var wg sync.WaitGroup
-		for _, hook := range hooks {
-			logger.Debugf("Adding worker for hook %v", hook)
-			wg.Add(1)
-			go worker(hook, post, false, &wg)
+		// don't depend on updating a reference to a Post
+		postData := syndication.PostData{
+			Title:       updatePost.Title,
+			Slug:        updatePost.Slug,
+			PostDate:    updatePost.PostDate,
+			Tags:        updatePost.Tags,
+			Body:        updatePost.Body,
+			FrontMatter: updatePost.FrontMatter,
+			PermaLink:   config.Blog.Url + updatePost.PermaLink(),
 		}
-		wg.Wait()
+		syndicationMeta := syndication.Syndicate(synOpts, includeHooks, postData)
+
+		logger.Debugf("new meta after hooks: %v", syndicationMeta)
+
+		for k, v := range syndicationMeta {
+			updatePost.FrontMatter[k] = v
+		}
+
+		err = SavePost(db, updatePost)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing (%v)",
+				err))
+		}
+
+		err = repo.SavePostFile(updatePost)
+		if err != nil {
+			logger.Error(err)
+			SetFlash(w, "flash", fmt.Sprintf(
+				"Your post was saved, but some syndication links might be missing on disk (%v)",
+				err))
+		}
 
 		// redirect(w, config.TemplatesDir, post.PermaLink())
 		http.Redirect(w, r, post.PermaLink(), http.StatusFound)
@@ -379,16 +447,24 @@ func CreateDeletePostFunc(
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			http.Redirect(w, r, "/", http.StatusFound)
-			// redirect(w, config.TemplatesDir, "/")
 		}
 
 		postID := r.PostFormValue("postID")
+		logger.Infof("Delete post: %s", postID)
 
 		post, err := GetPost(db, postID)
+		if err != nil {
+			logger.Errorf("Could not find post to delete: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Could not find post to delete: %v", err))
+			http.Redirect(w, r, "/edit/"+postID, http.StatusSeeOther)
+		}
+		logger.Debugf("post: %s date: %s", post.Title, post.PostDate.Format(POSTTIMESTAMPFMT))
 
 		err = DeletePost(db, postID)
 		if err != nil {
 			logger.Errorf("Could not delete post: %v", err)
+			SetFlash(w, "flash", fmt.Sprintf("Could not delete post: %v", err))
+			http.Redirect(w, r, "/edit/"+postID, http.StatusSeeOther)
 		}
 
 		err = repo.DeletePostFile(post)
@@ -398,13 +474,5 @@ func CreateDeletePostFunc(
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		// redirect(w, config.TemplatesDir, "/")
-	}
-}
-
-func worker(hook CrossPoster, post *Post, linkOnly bool, wg *sync.WaitGroup) {
-	defer wg.Done()
-	postedUrl := hook.SendPost(post, linkOnly)
-	if postedUrl != "" {
-		logger.Infof("Posted message: %s", postedUrl)
 	}
 }

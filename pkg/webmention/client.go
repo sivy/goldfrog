@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/sirupsen/logrus"
@@ -203,18 +202,9 @@ func (c *Client) SendMention(endpoint string, source string, target string) {
 	}
 }
 
-func (c *Client) mentionWorker(
-	endpoint string, source string, target string, wg *sync.WaitGroup) {
-
-	defer wg.Done()
-	c.SendMention(endpoint, source, target)
-}
-
 // SendWebMentions
 func (c *Client) SendWebMentions(source string, links []string) {
 	// logger.Infof("Sending webmentions for links %v", links)
-
-	var wg sync.WaitGroup
 
 	for _, link := range links {
 		logger.Debugf("Getting endpoint for link %s", link)
@@ -224,11 +214,9 @@ func (c *Client) SendWebMentions(source string, links []string) {
 			logger.Error(err)
 			return
 		}
-		logger.Debugf("Adding webmention worker for link %v", link)
-		wg.Add(1)
-		go c.mentionWorker(endpoint, source, link, &wg)
+		logger.Debugf("Sending mention for link %v", link)
+		c.SendMention(endpoint, source, link)
 	}
-	wg.Wait()
 }
 
 func NewWebMentionClient() Client {

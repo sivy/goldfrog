@@ -3,7 +3,6 @@ package blog
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -32,7 +31,7 @@ type ArchiveEntry struct {
 var dateFmts = [...]string{
 	"2006-01-02T03:04:05",
 	"2006-01-02T03:04:05Z",
-	"2006-01-02 03:04:05",
+	"2006-01-02 15:04:05",
 }
 
 func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
@@ -56,7 +55,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 
 	var posts = make([]*Post, 0)
 
-	sql := "SELECT id, slug, title, tags, postdate, body FROM posts"
+	sql := "SELECT id, title, slug, postdate, tags, frontmatter, body FROM posts"
 	if len(whereColumns) > 0 {
 		sql += " WHERE "
 		for i, c := range whereColumns {
@@ -66,6 +65,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 			}
 		}
 	}
+
 	sql += " ORDER BY datetime(postdate) DESC LIMIT ?"
 	if opts.Offset > 0 {
 		sql += " OFFSET ?"
@@ -114,7 +114,10 @@ func GetTaggedPosts(db *sql.DB, tag string) []*Post {
 	}
 
 	rows, err := db.Query(`
-		SELECT id, slug, title, tags, postdate, body FROM posts
+		SELECT id, title, slug,
+			postdate, tags, frontmatter,
+			body
+		FROM posts
 		WHERE tags like ?
 		ORDER BY datetime(postdate) DESC
 	`, "%"+tag+"%")
@@ -135,8 +138,10 @@ func GetPost(db *sql.DB, postID string) (*Post, error) {
 	var p Post
 
 	rows, err := db.Query(`
-		SELECT id, slug, title, tags,
-		postdate, body FROM posts
+		SELECT id, title, slug,
+			postdate, tags, frontmatter,
+			body
+		FROM posts
 		WHERE id = ?`, postID)
 
 	if err != nil {
@@ -158,8 +163,10 @@ func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 	var p Post
 
 	rows, err := db.Query(`
-		SELECT id, slug, title, tags,
-		postdate, body FROM posts
+		SELECT id, title, slug,
+			postdate, tags, frontmatter,
+			body
+	 	FROM posts
 		WHERE slug = ? LIMIT 1
 	`, postSlug)
 
@@ -216,8 +223,9 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 
 	rows, err := db.Query(`
-		SELECT id, slug, title, tags,
-			postdate, body
+		SELECT id, title, slug,
+			postdate, tags, frontmatter,
+			body
 		FROM posts
 		WHERE strftime("%Y", postdate) = ?
 		AND strftime("%m", postdate) = ?
@@ -238,8 +246,9 @@ func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Post {
 
 	rows, err := db.Query(`
-		SELECT id, slug, title, tags,
-			postdate, body
+		SELECT id, title, slug,
+			postdate, tags, frontmatter,
+			body
 		FROM posts
 		WHERE strftime("%Y", postdate) = ?
 		AND strftime("%m", postdate) = ?
@@ -257,18 +266,26 @@ func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Po
 	return posts
 }
 
-func CreatePost(db *sql.DB, post Post) error {
-
+func CreatePost(db *sql.DB, post *Post) error {
+	logger.Infof("-- Create new post: %v", post)
 	_, err := db.Exec(`
 	INSERT into posts (
-		slug, title, tags,
-		postdate, body
+		slug,
+		title,
+		tags,
+		postdate,
+		frontmatter,
+		body
 	) VALUES (
 		?, ?, ?,
-		datetime(), ?
+		datetime(),
+		?, ?
 	)
-	`, post.Slug, post.Title,
-		strings.Join(post.Tags, ","),
+	`, post.Slug,
+		post.Title,
+		post.TagString(),
+		// date
+		post.FrontMatterYAML(),
 		post.Body)
 
 	if err != nil {
@@ -276,18 +293,27 @@ func CreatePost(db *sql.DB, post Post) error {
 		return err
 	}
 
+	p, _ := GetPostBySlug(db, post.Slug)
+	logger.Debugf("created post: %v", p)
+
 	return nil
 
 }
 
 func SavePost(db *sql.DB, post *Post) error {
+	logger.Infof("-- Save post: %v", post)
+	logger.Debugf("-- frontmatter: %v", post.FrontMatterYAML())
 
 	_, err := db.Exec(`
 	UPDATE posts SET
-		title=?, tags=?, body=?
+		title=?,
+		tags=?,
+		frontmatter=?,
+		body=?
 	WHERE id=?
 	`, post.Title,
-		strings.Join(post.Tags, ","),
+		post.TagString(),
+		post.FrontMatterYAML(),
 		post.Body,
 		post.ID)
 
@@ -295,6 +321,11 @@ func SavePost(db *sql.DB, post *Post) error {
 		logger.Errorf("Could not save post: %v", err)
 		return err
 	}
+
+	logger.Debug("saved post, now load for sanity...")
+	p, _ := GetPostBySlug(db, post.Slug)
+
+	logger.Debugf("post: %v", p)
 
 	return nil
 
@@ -316,27 +347,31 @@ func DeletePost(db *sql.DB, postID string) error {
 
 // func paginatePosts(db *sql.DB, )
 
-func initDb(dbFile string) {
+func initDb(dbFile string) error {
 	createSql := `
 	CREATE TABLE IF NOT EXISTS posts (
 		id integer primary key,
+		title varchar(1024) default "",
 		slug varchar(256) unique,
-		title varchar(1024),
-		tags varchar(1024),
 		postdate varchar(25),
-		body text,
+		tags varchar(1024),
+		frontmatter text default "",
+		body text default "",
 		format varchar(15));
 	`
 	db, err := GetDb(dbFile)
 	if err != nil {
 		logger.Fatalf("Could not init db at %s: %v", dbFile, err)
+		return err
 	}
 
 	res, err := db.Exec(createSql)
 	if err != nil {
 		logger.Fatalf("Could not init db at %s: %v", dbFile, err)
+		return err
 	}
 	logger.Debug(res)
+	return nil
 }
 
 func checkDb(dbFile string) bool {
@@ -357,14 +392,16 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 		var body string
 		var tags string
 		var dateStr string
+		var fmStr string
 
-		err := rows.Scan(&p.ID, &p.Slug, &p.Title, &tags, &dateStr, &body)
+		err := rows.Scan(&p.ID, &p.Title, &p.Slug, &dateStr, &tags, &fmStr, &body)
 		if err != nil {
 			logger.Error(err)
 		}
-		var date time.Time
 
+		var date time.Time
 		date, err = dateparse.ParseAny(dateStr)
+		logger.Debugf(" dateStr: %s date: %s", dateStr, date)
 
 		if err != nil {
 			logger.Errorf("Cannot parse date from %s", dateStr)
@@ -374,6 +411,8 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 		}
 
 		p.Tags = splitTags(tags)
+
+		p.FrontMatter = GetFrontMatter(fmStr)
 
 		p.Body = body
 

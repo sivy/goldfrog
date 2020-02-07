@@ -11,12 +11,15 @@ import (
 func IndexPosts(postsDir string, dbFile string, verbose bool) {
 	logger := logrus.New()
 
-	logger.Infof("Indexing posts in %s to %s", postsDir, dbFile)
 	logger.Debugf("Checking db at %s", dbFile)
 
 	if !checkDb(dbFile) {
 		logger.Infof("Creating DB at %s", dbFile)
-		initDb(dbFile)
+		err := initDb(dbFile)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 	}
 
 	db, err := GetDb(dbFile)
@@ -25,7 +28,7 @@ func IndexPosts(postsDir string, dbFile string, verbose bool) {
 		return
 	}
 
-	repo := PostsRepo{
+	repo := FilePostsRepo{
 		PostsDirectory: postsDir,
 	}
 
@@ -52,6 +55,8 @@ func IndexFile(file string, db *sql.DB, verbose bool) int {
 	var post Post
 	post, err := ParseFile(file)
 
+	fmStr := post.FrontMatterYAML()
+
 	if err != nil {
 		logger.Errorf("Could not parse file %s", file)
 		return 0
@@ -62,14 +67,15 @@ func IndexFile(file string, db *sql.DB, verbose bool) int {
 
 	var sql = `
 		INSERT INTO posts (
-			slug, title, tags, postdate, body, format
+			slug, title, tags, postdate, frontmatter, body, format
 		) VALUES (
-			?, ?, ?, ?, ?, 'markdown'
+			?, ?, ?, ?, ?, ?, 'markdown'
 		) ON CONFLICT(slug) DO UPDATE
 		SET
 			title=excluded.title,
 			tags=excluded.tags,
 			postdate=excluded.postdate,
+			frontmatter=excluded.frontmatter,
 			body=excluded.body;
 	`
 	logger.Infof("Insert/Update post %s", post.Slug)
@@ -81,6 +87,7 @@ func IndexFile(file string, db *sql.DB, verbose bool) int {
 		post.Title,
 		strings.Join(post.Tags, ", "),
 		post.PostDate.Format(time.RFC3339),
+		fmStr,
 		post.Body,
 	)
 

@@ -67,13 +67,22 @@ func main() {
 		goldfrogHome = filepath.Join(userHomeDir, "goldfrog")
 	}
 
-	flag.StringVar(&postsDir, "posts_dir", goldfrogHome+"/posts", "")
-	flag.StringVar(&dbFile, "db", goldfrogHome+"/blog.db", "")
+	flag.StringVar(
+		&postsDir, "posts_dir",
+		goldfrogHome+"/posts",
+		"Location of your posts (Jekyll-compatible markdown)")
+
+	flag.StringVar(
+		&dbFile, "db",
+		goldfrogHome+"/blog.db",
+		"File path to sqlite db for indexed content")
+
 	flag.BoolVar(&verbose, "v", false, "")
 	flag.BoolVar(&showVersionLong, "version-long", false, "")
 	flag.BoolVar(&showVersion, "version", false, "")
 
 	flag.Parse()
+
 	if showVersionLong {
 		fmt.Println(version)
 		return
@@ -85,6 +94,6 @@ func main() {
 		return
 	}
 
-	logger.Infof("Indexing %s", postsDir)
+	logger.Infof("Indexing posts in: %s to db: %s", postsDir, dbFile)
 	blog.IndexPosts(postsDir, dbFile, verbose)
 }

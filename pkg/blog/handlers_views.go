@@ -31,7 +31,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 			IsAdmin:     isOwner,
 		}
 
-		post := Post{}
+		post := NewPost(PostOpts{})
 
 		for _, p := range posts {
 			p.User = user
@@ -261,7 +261,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 			Flash   string
 		}{
 			Posts:   posts,
-			Post:    Post{},
+			Post:    NewPost(PostOpts{}),
 			Config:  config,
 			IsOwner: isOwner,
 			Date:    date,

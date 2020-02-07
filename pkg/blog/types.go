@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 type Blog struct {
@@ -13,15 +15,24 @@ type Blog struct {
 	Meta    map[string]string `json:"meta"`
 }
 
+type PostOpts struct {
+	Title       string            `json:"title"`
+	Slug        string            `json:"slug"`
+	PostDate    time.Time         `json:"date"`
+	Tags        []string          `json:"tags"`
+	FrontMatter map[string]string `json:"frontmatter"`
+	Body        string            `json:"body"`
+}
+
 type Post struct {
-	ID       int       `json:"post_id"`
-	Slug     string    `json:"slug"`
-	Title    string    `json:"title"`
-	Tags     []string  `json:"tags"`
-	PostDate time.Time `json:"date"`
-	Body     string    `json:"body"`
-	User     User      `json:"user"`
-	Format   string    `json:"format"`
+	ID          int               `json:"post_id"`
+	Title       string            `json:"title"`
+	Slug        string            `json:"slug"`
+	PostDate    time.Time         `json:"date"`
+	Tags        []string          `json:"tags"`
+	FrontMatter map[string]string `json:"frontmatter"`
+	Body        string            `json:"body"`
+	User        User              `json:"user"`
 }
 
 func (post *Post) TagString() string {
@@ -41,15 +52,39 @@ func (post *Post) PermaShortId() string {
 }
 
 func (post *Post) ToString() string {
-	filecontent := fmt.Sprintf("title: %s\n", post.Title)
-	filecontent = filecontent + fmt.Sprintf("slug: %s\n", post.Slug)
-	filecontent = filecontent + fmt.Sprintf(
-		"date: %s\n", post.PostDate.Format("2006-01-02 03:04:05"))
-	filecontent = filecontent + fmt.Sprintf("tags: %s\n", strings.Join(post.Tags, ","))
-	filecontent = filecontent + fmt.Sprintf("---\n")
-	filecontent = filecontent + fmt.Sprintf("%s\n", post.Body)
+	fileContent := post.FrontMatterYAML()
 
-	return filecontent
+	fileContent = fileContent + fmt.Sprintf("---\n")
+	fileContent = fileContent + fmt.Sprintf("%s\n", post.Body)
+
+	return fileContent
+}
+
+func (post *Post) FrontMatterYAML() string {
+	fm := post.FrontMatter
+	fm["title"] = post.Title
+	fm["slug"] = post.Slug
+	fm["date"] = post.PostDate.Format(POSTTIMESTAMPFMT)
+	fm["tags"] = strings.Join(post.Tags, ",")
+	fmBytes, _ := yaml.Marshal(post.FrontMatter)
+	fmStr := string(fmBytes)
+	return fmStr
+}
+
+func NewPost(opts PostOpts) Post {
+	p := Post{
+		Title:    opts.Title,
+		Slug:     opts.Slug,
+		PostDate: time.Now(),
+		Tags:     opts.Tags,
+		Body:     opts.Body,
+	}
+	if opts.FrontMatter != nil {
+		p.FrontMatter = opts.FrontMatter
+	} else {
+		p.FrontMatter = make(map[string]string)
+	}
+	return p
 }
 
 type User struct {

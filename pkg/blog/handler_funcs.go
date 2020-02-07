@@ -12,6 +12,8 @@ import (
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/leekchan/gtf"
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/sivy/goldfrog/pkg/syndication"
 )
 
 func markDowner(args ...interface{}) template.HTML {
@@ -42,6 +44,25 @@ func hashtagger(args ...interface{}) template.HTML {
 	return template.HTML(s)
 }
 
+func tweetLinker(args ...interface{}) template.HTML {
+	config := args[0].(Config)
+	tweet_id := fmt.Sprintf("%s", args[1:])
+	poster := syndication.NewTwitterPoster(config.Twitter)
+	link := fmt.Sprintf(poster.LinkForID(tweet_id))
+	logger.Debugf("link: %s", link)
+	return template.HTML(link)
+}
+
+func tootLinker(args ...interface{}) template.HTML {
+	config := args[0].(Config)
+	toot_id := fmt.Sprintf("%s", args[1])
+	poster := syndication.NewMastodonPoster(config.Mastodon)
+	link := fmt.Sprintf(poster.LinkForID(toot_id))
+	logger.Debugf("link: %s", link)
+
+	return template.HTML(link)
+}
+
 // func makeFlashFunc(w http.ResponseWriter, r *http.Request) func(args ...interface{}) template.HTML {
 // 	logger.Debugf("make flash function with writer: %v", w)
 // 	return func(args ...interface{}) template.HTML {
@@ -62,6 +83,8 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 		"escape":    htmlEscaper,
 		"hashtags":  hashtagger,
 		"striphtml": stripHTML,
+		"tweetlink": tweetLinker,
+		"tootlink":  tootLinker,
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
 
@@ -163,4 +186,17 @@ func getPaginationOpts(r *http.Request, opts *GetPostOpts) {
 
 	opts.Limit = limit
 	opts.Offset = offset
+}
+
+func stripHTML(args ...interface{}) string {
+	content := fmt.Sprintf("%s", args...)
+	extensions := parser.CommonExtensions
+	parser := parser.NewWithExtensions(extensions)
+
+	s := markdown.ToHTML([]byte(content), parser, nil)
+
+	p := bluemonday.StrictPolicy()
+	plaintext := p.Sanitize(string(s))
+
+	return plaintext
 }

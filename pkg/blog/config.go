@@ -49,6 +49,8 @@ type Config struct {
 		ClientSecret string `yaml:"clientsecret"`
 		AccessKey    string `yaml:"acceskey"`
 		AccessSecret string `yaml:"accessecret"`
+		UserID       string `yaml:"userid"`
+		LinkFormat   string `yaml:"linkformat"`
 	} `yaml:"twitter"`
 
 	Mastodon struct {
@@ -56,7 +58,6 @@ type Config struct {
 		ClientID     string `yaml:"clientid"`
 		ClientSecret string `yaml:"clientsecret"`
 		AccessToken  string `yaml:"accesstoken"`
-		UserEmail    string `yaml:"useremail"`
-		UserPassword string `yaml:"userpassword"`
+		LinkFormat   string `yaml:"linkformat"`
 	} `yaml:"mastodon"`
 }
