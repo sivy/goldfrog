@@ -145,7 +145,7 @@ func checkIsOwner(config Config, r *http.Request) bool {
 
 func updateTags(body string, tags []string) []string {
 	logger.Debugf("Start tags: %q", tags)
-	hashtags := getHashTags(body)
+	hashtags := GetHashTags(body)
 	logger.Debugf("Found hashtags: %v", hashtags)
 	for _, t := range hashtags {
 		if !tagInTags(t, tags) {

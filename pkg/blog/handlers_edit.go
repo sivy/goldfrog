@@ -97,11 +97,11 @@ func CreateNewPostFunc(
 		slug := r.PostFormValue("slug")
 
 		if title == "" {
-			slug = makeNoteSlug(body)
+			slug = MakeNoteSlug(body)
 		}
 
 		if slug == "" {
-			slug = makePostSlug(title)
+			slug = MakePostSlug(title)
 		}
 
 		body = strings.Replace(body, "\r\n", "\n", -1)

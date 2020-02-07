@@ -72,10 +72,15 @@ func (post *Post) FrontMatterYAML() string {
 }
 
 func NewPost(opts PostOpts) Post {
+	var date = opts.PostDate
+	if date.IsZero() {
+		date = time.Now()
+	}
+
 	p := Post{
 		Title:    opts.Title,
 		Slug:     opts.Slug,
-		PostDate: time.Now(),
+		PostDate: date,
 		Tags:     opts.Tags,
 		Body:     opts.Body,
 	}

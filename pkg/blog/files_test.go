@@ -102,29 +102,29 @@ func TestPostSlug(t *testing.T) {
 
 func TestMakePostSlug(t *testing.T) {
 	title := "this is a test"
-	slug := makePostSlug(title)
+	slug := MakePostSlug(title)
 	assert.Equal(t, "this-is-a-test", slug)
 
 	title = "this isn't a test"
-	slug = makePostSlug(title)
+	slug = MakePostSlug(title)
 	assert.Equal(t, "this-isnt-a-test", slug)
 
 	title = "this is 1 test"
-	slug = makePostSlug(title)
+	slug = MakePostSlug(title)
 	assert.Equal(t, "this-is-1-test", slug)
 
 	title = "this is 1 test?"
-	slug = makePostSlug(title)
+	slug = MakePostSlug(title)
 	assert.Equal(t, "this-is-1-test", slug)
 }
 
 func TestGetHashTags(t *testing.T) {
 	s := `this is a post about #testing and #golang`
-	res := getHashTags(s)
+	res := GetHashTags(s)
 	assert.NotEmpty(t, res)
 	assert.Equal(t, []string{"testing", "golang"}, res)
 
-	res = getHashTags("")
+	res = GetHashTags("")
 	assert.Empty(t, res)
 }
 

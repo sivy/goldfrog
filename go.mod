@@ -13,7 +13,7 @@ require (
 	github.com/leekchan/gtf v0.0.0-20190214083521-5fba33c5b00b
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-mastodon v0.0.4
-	github.com/mattn/go-sqlite3 v2.0.2+incompatible
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.6.1

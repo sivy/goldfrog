@@ -188,7 +188,7 @@ func ParseFile(path string) (Post, error) {
 
 	// add post hashtags, cause that's cool
 	processedBody := fmt.Sprintf("%s", markDowner(post.Body))
-	hashtags := getHashTags(processedBody)
+	hashtags := GetHashTags(processedBody)
 
 	fmt.Printf("Found hashtags: %v", hashtags)
 	for _, t := range hashtags {
@@ -279,7 +279,7 @@ func splitTags(tags string) []string {
 	return tagList2
 }
 
-func getHashTags(s string) []string {
+func GetHashTags(s string) []string {
 	re := regexp.MustCompile(HASHTAGRE)
 	res := re.FindAll([]byte(s), -1)
 	var hashtags []string
@@ -302,7 +302,7 @@ func getHashTags(s string) []string {
 // 	return hashtags
 // }
 
-func makePostSlug(title string) string {
+func MakePostSlug(title string) string {
 	bits := strings.Split(title, " ")
 	s := strings.Join(bits, "-")
 	s = strings.ToLower(s)
@@ -313,7 +313,7 @@ func makePostSlug(title string) string {
 	return s
 }
 
-func makeNoteSlug(content string) string {
+func MakeNoteSlug(content string) string {
 	h := sha256.New()
 	h.Write([]byte(content))
 	str := fmt.Sprintf("%x", h.Sum(nil))

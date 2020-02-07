@@ -23,9 +23,10 @@ type GetPostOpts struct {
 }
 
 type ArchiveEntry struct {
-	Year  string
-	Month string
-	Count int
+	Year       string
+	Month      string
+	CountPosts int
+	CountNotes int
 }
 
 var dateFmts = [...]string{
@@ -186,14 +187,15 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 
 	rows, err := db.Query(`
 	SELECT
-		STRFTIME('%Y', postdate) postyear,
-		STRFTIME('%m', postdate) postmonth,
-		COUNT(id) postcount
+		STRFTIME('%Y', postdate) as postyear,
+		STRFTIME('%m', postdate) as postmonth,
+		SUM(CASE WHEN title != "" THEN 1 ELSE 0 END) AS postcount,
+		SUM(CASE WHEN title = "" THEN 1 ELSE 0 END) AS notecount
 	FROM
 		posts
 	GROUP BY
-		STRFTIME('%Y', postdate),
-		STRFTIME('%m', postdate)
+		postyear,
+		postmonth
 	ORDER BY
 		postyear,
 		postmonth;
@@ -210,7 +212,8 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 		var archiveEntry ArchiveEntry
 
 		err = rows.Scan(
-			&archiveEntry.Year, &archiveEntry.Month, &archiveEntry.Count)
+			&archiveEntry.Year, &archiveEntry.Month,
+			&archiveEntry.CountPosts, &archiveEntry.CountNotes)
 
 		if err != nil {
 			logger.Error(err)
