@@ -34,11 +34,12 @@ func (tp *TwitterPoster) FormatMessage(postData PostData) string {
 		title = postData.Title
 	}
 
-	if postData.PermaLink != "" {
+	if postData.Title != "" {
+		title = postData.Title
 		link = fmt.Sprintf("(%s)", postData.PermaLink)
 	}
-	if postData.ShortID != "" {
-		link = fmt.Sprintf("(monkinetic %s)", postData.ShortID)
+	if postData.Title == "" {
+		link = fmt.Sprintf("(monkinetic %s)", postData.Slug)
 	}
 
 	var fmtTagStr string
