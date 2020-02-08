@@ -15,6 +15,7 @@ require (
 	github.com/mattn/go-mastodon v0.0.4
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.2
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.6.1
 	github.com/stretchr/testify v1.3.0
