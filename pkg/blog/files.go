@@ -183,7 +183,9 @@ func ParseFile(path string) (Post, error) {
 
 	var tags []string
 	for _, t := range tagList {
-		tags = append(tags, strings.TrimSpace(t))
+		tags = append(
+			tags, strings.ToLower(
+				strings.TrimSpace(t)))
 	}
 
 	// add post hashtags, cause that's cool
@@ -197,11 +199,25 @@ func ParseFile(path string) (Post, error) {
 		}
 	}
 
-	post.Tags = tags
+	post.Tags = dedupe(tags)
 
 	// logger.Debugf("%q", post)
 
 	return post, nil
+}
+
+func dedupe(slice []string) []string {
+	var tmpMap = make(map[string]struct{})
+	var dedupedValues []string
+	type noVal struct{}
+
+	for _, t := range slice {
+		tmpMap[t] = noVal{}
+	}
+	for t, _ := range tmpMap {
+		dedupedValues = append(dedupedValues, t)
+	}
+	return dedupedValues
 }
 
 func splitFile(source string) []string {

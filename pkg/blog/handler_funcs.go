@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
@@ -149,7 +150,7 @@ func updateTags(body string, tags []string) []string {
 	logger.Debugf("Found hashtags: %v", hashtags)
 	for _, t := range hashtags {
 		if !tagInTags(t, tags) {
-			tags = append(tags, t)
+			tags = append(tags, strings.ToLower(t))
 		}
 	}
 	logger.Debugf("End tags: %v", tags)
