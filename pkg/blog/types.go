@@ -40,8 +40,12 @@ func (post *Post) TagString() string {
 }
 
 func (post *Post) PermaLink() string {
+	format := "/%s/%s"
+	if post.Title == "" {
+		format = "/%s/#%s"
+	}
 	return fmt.Sprintf(
-		"/%s/%s",
+		format,
 		post.PostDate.Format("2006/01/02"),
 		post.Slug,
 	)
