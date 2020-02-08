@@ -24,6 +24,7 @@ jobs:
       - run: mkdir dist
       - run: make server
       - run: make indexer
+      - run: make persister
       - run: ./goldfrogd --version > TAG.txt
       - run: ./goldfrogd --version-long > VERSION.txt
       - persist_to_workspace:
@@ -33,6 +34,7 @@ jobs:
             - VERSION.txt
             - goldfrogd
             - indexer
+            - persister
 
   publish-to-s3:
     docker:

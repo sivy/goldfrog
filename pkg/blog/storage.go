@@ -67,7 +67,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 		}
 	}
 
-	sql += " ORDER BY datetime(postdate) DESC LIMIT ?"
+	sql += " ORDER BY datetime(postdate) DESC"
 	if opts.Offset > 0 {
 		sql += " OFFSET ?"
 	}
@@ -75,8 +75,11 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 		opts.Limit = 100
 	}
 
-	whereValues = append(
-		whereValues, fmt.Sprintf("%d", opts.Limit))
+	if opts.Limit != -1 {
+		sql += " LIMIT ?"
+		whereValues = append(
+			whereValues, fmt.Sprintf("%d", opts.Limit))
+	}
 
 	args := make([]interface{}, len(whereValues))
 	for i, id := range whereValues {
@@ -404,7 +407,6 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 
 		var date time.Time
 		date, err = dateparse.ParseAny(dateStr)
-		logger.Debugf(" dateStr: %s date: %s", dateStr, date)
 
 		if err != nil {
 			logger.Errorf("Cannot parse date from %s", dateStr)

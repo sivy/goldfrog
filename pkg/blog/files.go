@@ -243,7 +243,6 @@ func getPostDate(dateStr string, filename string) (time.Time, error) {
 	day := r[3]
 
 	dateStr = fmt.Sprintf("%s-%s-%s", year, month, day)
-	logger.Debugf("Got dateStr: %s", dateStr)
 	return time.Parse(POSTDATEFMT, dateStr)
 }
 
