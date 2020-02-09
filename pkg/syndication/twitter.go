@@ -81,6 +81,10 @@ func (tp *TwitterPoster) FormatMessage(postData PostData) string {
 		messageBody = sourceParas[0]
 	}
 
+	if len(messageBody) > availableChars {
+		messageBody = messageBody[:availableChars-3] + "..."
+	}
+
 	// find closes para that fits in available length
 
 	if title != "" {
@@ -120,7 +124,8 @@ func (tp *TwitterPoster) HandlePost(postData PostData) map[string]string {
 		content, &twitter.StatusUpdateParams{})
 
 	if err != nil {
-		fmt.Printf("%v", err)
+		logger.Error(err)
+		return make(map[string]string)
 	}
 
 	var resultData = make(map[string]string)

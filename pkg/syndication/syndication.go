@@ -56,7 +56,7 @@ func Syndicate(config SyndicateConfig, includeSyndicators map[string]bool, postD
 			for k, v := range res {
 				meta[k] = v
 			}
-			logger.Debugf("meta afte hook %v", meta)
+			logger.Debugf("meta after hook %v", meta)
 		}(hook)
 	}
 	// close(resultQueue)
