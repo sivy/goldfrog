@@ -25,7 +25,9 @@ func TestParseFile(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test post", post.Title)
-	assert.Equal(t, []string{"test", "post", "hashtag"}, post.Tags)
+	for _, tag := range post.Tags {
+		assert.Contains(t, []string{"test", "post", "hashtag"}, tag)
+	}
 	assert.Equal(t, "Post body #hashtag", post.Body)
 
 	assert.Equal(t, "2019-12-30 22:24", post.PostDate.Format(POSTTIMESTAMPFMT))
