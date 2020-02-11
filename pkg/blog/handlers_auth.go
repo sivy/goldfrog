@@ -33,12 +33,16 @@ func CreateSigninPageFunc(
 				logger.Errorf("Could not get template: %v", err)
 			}
 
+			flash, _ := GetFlash(w, r, "flash")
+
 			err = t.ExecuteTemplate(w, "redirect", struct {
 				Config Config
 				Url    string
+				Flash  string
 			}{
 				Config: config,
 				Url:    "/",
+				Flash:  flash,
 			})
 			if err != nil {
 				logger.Warnf("Error rendering... %v", err)
@@ -55,11 +59,15 @@ func CreateSigninPageFunc(
 			return
 		}
 
+		flash, _ := GetFlash(w, r, "flash")
+
 		// w.Header().Set("Content-Type", "text/html")
 		err = t.ExecuteTemplate(w, "base", struct {
 			Config Config
+			Flash  string
 		}{
 			Config: config,
+			Flash:  flash,
 		})
 		if err != nil {
 			logger.Warnf("Error rendering... %v", err)
