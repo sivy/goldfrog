@@ -112,11 +112,14 @@ func (xp *MastodonPoster) HandlePost(postData PostData) map[string]string {
 	toot := mastodon.Toot{
 		Status:     content,
 		Visibility: "unlisted",
+		Sensitive:  true,
 	}
 
+	tagStr := strings.Join(postData.Tags, ", ")
 	if postData.Title != "" {
-		toot.SpoilerText = postData.Title
-		toot.Sensitive = true
+		toot.SpoilerText = fmt.Sprintf("%s (%s)", postData.Title, tagStr)
+	} else {
+		toot.SpoilerText = tagStr
 	}
 
 	logger.Debugf("Sending Mastodon post..")
