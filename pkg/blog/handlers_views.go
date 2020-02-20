@@ -445,11 +445,24 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving tag search...")
 
+		isOwner := checkIsOwner(config, r)
+
 		// postOpts := GetPostOpts{Limit: 10}
 		tag := chi.URLParam(r, "tag")
 
 		posts := GetTaggedPosts(db, tag)
-		logger.Debugf("tagged posts: %d", len(posts))
+		user := User{
+			DisplayName: config.Blog.Author.Name,
+			Email:       config.Blog.Author.Email,
+			Url:         config.Blog.Url,
+			Image:       config.Blog.Author.Image,
+			IsAdmin:     isOwner,
+		}
+
+		for _, p := range posts {
+			p.User = user
+		}
+
 		t, err := getTemplate(config.TemplatesDir, "post_list.html")
 
 		if err != nil {
@@ -458,8 +471,6 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			w.Write([]byte(err.Error()))
 			return
 		}
-
-		isOwner := checkIsOwner(config, r)
 
 		flash, _ := GetFlash(w, r, "flash")
 
