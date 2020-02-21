@@ -33,7 +33,7 @@ func (xp *MastodonPoster) FormatMessage(postData PostData) string {
 		link = fmt.Sprintf("(%s)", postData.PermaLink)
 	}
 	if postData.Title == "" {
-		link = fmt.Sprintf("(monkinetic %s)", postData.Slug)
+		link = fmt.Sprintf("(monkinetic.blog %s)", postData.Slug)
 	}
 
 	var fmtTagStr string
