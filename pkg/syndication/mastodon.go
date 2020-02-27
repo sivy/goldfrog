@@ -117,9 +117,14 @@ func (xp *MastodonPoster) HandlePost(postData PostData) map[string]string {
 
 	tagStr := strings.Join(postData.Tags, ", ")
 	if postData.Title != "" {
-		toot.SpoilerText = fmt.Sprintf("%s (%s)", postData.Title, tagStr)
+		toot.SpoilerText = postData.Title
+		if tagStr != "" {
+			toot.SpoilerText += fmt.Sprintf(" (%s)", tagStr)
+		}
 	} else {
-		toot.SpoilerText = tagStr
+		if tagStr != "" {
+			toot.SpoilerText = tagStr
+		}
 	}
 
 	logger.Debugf("Sending Mastodon post..")
