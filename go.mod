@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/araddon/dateparse v0.0.0-20190622164848-0fb0a474d195
-	github.com/dghubble/go-twitter v0.0.0-20190719072343-39e5462e111f // indirect
 	github.com/dghubble/oauth1 v0.6.0
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-chi/chi v4.0.3+incompatible
@@ -22,5 +21,3 @@ require (
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80
 	gopkg.in/yaml.v2 v2.2.8
 )
-
-replace github.com/dghubble/go-twitter v0.0.0-20190719072343-39e5462e111f => github.com/sivy/go-twitter v0.0.0-20200228143626-89362039a5e4
