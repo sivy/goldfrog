@@ -1,6 +1,7 @@
 package syndication
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
@@ -124,6 +125,16 @@ func (xp *MastodonPoster) HandlePost(postData PostData) map[string]string {
 	} else {
 		if tagStr != "" {
 			toot.SpoilerText = tagStr
+		}
+	}
+
+	if len(postData.MediaContent) > 0 {
+		r := bytes.NewReader(postData.MediaContent)
+		att, err := c.UploadMediaFromReader(context.Background(), r)
+		if err != nil {
+			logger.Errorf("Could not upload media: %s", err)
+		} else {
+			toot.MediaIDs = []mastodon.ID{att.ID}
 		}
 	}
 
