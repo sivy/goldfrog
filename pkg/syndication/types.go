@@ -3,14 +3,16 @@ package syndication
 import "time"
 
 type PostData struct {
-	Title       string
-	Slug        string
-	PostDate    time.Time
-	Tags        []string
-	Body        string
-	FrontMatter map[string]string
-	PermaLink   string
-	ShortID     string
+	Title        string
+	Slug         string
+	PostDate     time.Time
+	Tags         []string
+	Body         string
+	FrontMatter  map[string]string
+	PermaLink    string
+	ShortID      string
+	MediaContent []byte
+	MediaType    string
 }
 
 type TwitterOpts struct {

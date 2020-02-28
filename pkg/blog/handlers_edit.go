@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -68,6 +69,8 @@ func CreateNewPostFunc(
 		var hasImage bool
 		var imageUrl string
 		var imagePath string
+		var mediaBytes []byte
+		var mediaType string
 
 		if err == nil {
 			// there's an image
@@ -89,6 +92,23 @@ func CreateNewPostFunc(
 				imageUrl = strings.Join([]string{
 					config.Blog.Url, "uploads", handler.Filename}, "/")
 			}
+
+			mediaBytes, err = ioutil.ReadFile(imagePath)
+			if err != nil {
+				logger.Error(err)
+				hasImage = false
+			} else {
+				ext := filepath.Ext(imagePath)
+				logger.Debug(mediaType)
+				mediaType = "tweet_image"
+				if ext == ".gif" {
+					mediaType = "tweet_gif"
+				}
+
+				logger.Debug(mediaType)
+			}
+			// get bytes
+			// file
 		}
 
 		title := r.PostFormValue("title")
@@ -195,6 +215,10 @@ func CreateNewPostFunc(
 			Body:        updatePost.Body,
 			FrontMatter: updatePost.FrontMatter,
 			PermaLink:   config.Blog.Url + updatePost.PermaLink(),
+		}
+		if len(mediaBytes) > 0 {
+			postData.MediaContent = mediaBytes
+			postData.MediaType = mediaType
 		}
 		syndicationMeta := syndication.Syndicate(synOpts, includeHooks, postData)
 

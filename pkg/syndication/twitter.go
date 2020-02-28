@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
+	"github.com/sivy/go-twitter/twitter"
 )
 
 const (
@@ -120,8 +120,20 @@ func (tp *TwitterPoster) HandlePost(postData PostData) map[string]string {
 
 	var content = tp.FormatMessage(postData)
 
-	tweet, _, err := client.Statuses.Update(
-		content, &twitter.StatusUpdateParams{})
+	tweetParams := &twitter.StatusUpdateParams{}
+	if len(postData.MediaContent) > 0 {
+		res, _, err := client.Media.Upload(
+			postData.MediaContent, postData.MediaType)
+		if err != nil {
+			logger.Errorf("Could not upload media: %s", err)
+		} else {
+			if res.MediaID > 0 {
+				tweetParams.MediaIds = []int64{res.MediaID}
+			}
+		}
+	}
+
+	tweet, _, err := client.Statuses.Update(content, tweetParams)
 
 	if err != nil {
 		logger.Error(err)
