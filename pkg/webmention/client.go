@@ -1,6 +1,7 @@
 package webmention
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -25,6 +26,7 @@ type Client struct {
 }
 
 func (c *Client) Fetch(url string) (*http.Response, error) {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -46,6 +48,11 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 	}
 
 	resp, err := c.Fetch(mentionTarget)
+
+	if err != nil {
+		logger.Error(err)
+		return "", err
+	}
 
 	var endpointValue string
 	/*
