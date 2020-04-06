@@ -87,6 +87,7 @@ func main() {
 	logger.Debug("loading config")
 
 	config := loadConfig(configDir)
+	config.Version = version
 
 	if config.PostsDir == "" && postsDir != "" {
 		config.PostsDir = postsDir

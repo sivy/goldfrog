@@ -1,7 +1,8 @@
 package blog
 
 type Config struct {
-	Blog struct {
+	Version string `json:"version" yaml:"version"`
+	Blog    struct {
 		Title   string `json:"title" yaml:"title"`
 		Subhead string `json:"subhead" yaml:"subhead"`
 		Author  struct {
