@@ -27,13 +27,15 @@ type Client struct {
 
 func (c *Client) Fetch(url string) (*http.Response, error) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	logger.Infof("Fetching URL: %s", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		logger.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
-		return nil, err
+		return nil, errors.New(
+			fmt.Sprintf("No actionable response (%d)", resp.StatusCode))
 	}
 	return resp, nil
 }
@@ -48,6 +50,7 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 	}
 
 	resp, err := c.Fetch(mentionTarget)
+	logger.Infof("resp: %s, err: %s", resp.Status, err)
 
 	if err != nil {
 		logger.Error(err)
@@ -61,15 +64,11 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 		Link: <http://aaronpk.example/webmention>; rel="webmention"
 	*/
 	endpointValue = c.getHeadEndpoint(resp.Header)
+
 	if endpointValue == "" {
 		// test #15, link with empty href resolves to the page url
 		// does this count for Link: headers?
 		return mentionTarget, nil
-	}
-
-	if err != nil {
-		logger.Error(err)
-		return "", err
 	}
 
 	// Load the HTML document
@@ -87,6 +86,7 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 	if endpointValue == "<none>" {
 		endpointValue = c.getHtmlEndpoint(doc, []string{"link", "a"})
 	}
+
 	// nothing found in getHtmlEndpoint returns "<none>"
 	if endpointValue == "" {
 		// test #15 resolve empty href to the page url
@@ -111,9 +111,10 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 func (c *Client) getHeadEndpoint(header http.Header) string {
 	var endpointValue = "<none>"
 	if linkVals, ok := header["Link"]; ok {
-		//do something here
+		// Get all <link> elements from the <head>
 		links := linkheader.ParseMultiple(linkVals)
 		for _, link := range links {
+			// is there a webmention link?
 			if strings.Contains(link.Rel, "webmention") {
 				rels := strings.Split(link.Rel, " ")
 				for _, rel := range rels {
@@ -145,6 +146,7 @@ func (c *Client) getHtmlEndpoint(doc *goquery.Document, elements []string) strin
 			}
 			return true
 		})
+
 	return hrefValue
 }
 
