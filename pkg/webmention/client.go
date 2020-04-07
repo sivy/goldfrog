@@ -50,12 +50,12 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 	}
 
 	resp, err := c.Fetch(mentionTarget)
-	logger.Infof("resp: %s, err: %s", resp.Status, err)
-
 	if err != nil {
 		logger.Error(err)
 		return "", err
 	}
+
+	logger.Infof("resp: %s, err: %s", resp.Status, err)
 
 	var endpointValue string
 	/*
