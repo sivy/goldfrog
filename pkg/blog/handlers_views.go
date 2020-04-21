@@ -10,6 +10,18 @@ import (
 	"github.com/go-chi/chi"
 )
 
+func GetLastNDays(days int) []time.Time {
+	logger.Infof("Get dates for last %d days", days)
+	var dates = make([]time.Time, 0)
+	var t = time.Now()
+
+	for i := 0; i < days-1; i++ {
+		dates = append(dates, t.AddDate(0, 0, -i))
+	}
+
+	return dates
+}
+
 // CreateIndexFunc
 func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 	logger.Debug("Creating index handler")
@@ -83,7 +95,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 	logger.Debug("Creating rss handler")
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("Serving index...")
+		logger.Info("Serving index RSS...")
 
 		postOpts := GetPostOpts{Limit: 10}
 		posts := GetPosts(db, postOpts)
@@ -112,6 +124,61 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 			Posts:  posts,
 			Config: config,
 			Flash:  flash,
+		})
+
+		if err != nil {
+			logger.Warnf("Error rendering: %v", err)
+		}
+	}
+}
+
+// CreateDailyRssFunc
+func CreateDailyRssFunc(config Config, db *sql.DB) http.HandlerFunc {
+	logger.Debug("Creating rss handler")
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("Serving daily RSS...")
+
+		dates := GetLastNDays(10)
+		logger.Info(dates)
+
+		type DayData struct {
+			Date  time.Time
+			Posts []*Post
+		}
+
+		days := make([]DayData, 0)
+
+		for _, d := range dates {
+			posts := GetArchiveDayPosts(
+				db, fmt.Sprintf("%d", d.Year()),
+				fmt.Sprintf("%02d", d.Month()),
+				fmt.Sprintf("%02d", d.Day()))
+
+			logger.Debugf("Found %d posts", len(posts))
+			days = append(days, DayData{
+				Date:  d,
+				Posts: posts,
+			})
+		}
+
+		t, err := getTextTemplate(config.TemplatesDir, "base/rss_daily.xml")
+
+		if err != nil {
+			logger.Errorf("Could not parse template: %v", err)
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/xml")
+		w.Write([]byte(`<?xml version="1.0" encoding="utf-8" standalone="yes" ?>`))
+
+		err = t.ExecuteTemplate(w, "rss_daily", struct {
+			Days   []DayData
+			Config Config
+		}{
+			Days:   days,
+			Config: config,
 		})
 
 		if err != nil {

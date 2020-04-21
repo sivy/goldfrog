@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	tmplText "text/template"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
@@ -88,6 +89,37 @@ func getTemplate(templatesDir string, name string) (*template.Template, error) {
 		"tootlink":  tootLinker,
 		// "isOwner": makeIsOwner(isOwner)
 	}).Funcs(gtf.GtfFuncMap)
+
+	t, err := t.ParseGlob(filepath.Join(templatesDir, "base/*.html"))
+	if err != nil {
+		return t, err
+	}
+
+	t, err = t.ParseFiles(
+		filepath.Join(templatesDir, name),
+	)
+	if err != nil {
+		return t, err
+	}
+
+	return t, nil
+}
+
+func getTextTemplate(templatesDir string, name string) (*tmplText.Template, error) {
+	t := tmplText.New("").Funcs(tmplText.FuncMap{
+		"markdown":  markDowner,
+		"excerpt":   excerpter,
+		"escape":    htmlEscaper,
+		"hashtags":  hashtagger,
+		"striphtml": stripHTML,
+		"tweetlink": tweetLinker,
+		"tootlink":  tootLinker,
+		// "isOwner": makeIsOwner(isOwner)
+	}).Funcs(tmplText.FuncMap{
+		"join":    gtf.GtfFuncMap["join"],
+		"default": gtf.GtfFuncMap["default"],
+		"replace": gtf.GtfFuncMap["replace"],
+	})
 
 	t, err := t.ParseGlob(filepath.Join(templatesDir, "base/*.html"))
 	if err != nil {

@@ -168,6 +168,7 @@ func runServer(
 		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db))
 		r.Mount("/tag/{tag}", blog.CreateTagPageFunc(config, db))
 		r.Mount("/feed.xml", blog.CreateRssFunc(config, db))
+		r.Mount("/feed_daily.xml", blog.CreateDailyRssFunc(config, db))
 		r.Mount("/search", blog.CreateSearchPageFunc(config, db))
 
 		r.Mount("/new", blog.CreateNewPostFunc(config, db, &repo))
