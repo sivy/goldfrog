@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -155,6 +156,11 @@ func CreateDailyRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 				fmt.Sprintf("%02d", d.Day()))
 
 			logger.Debugf("Found %d posts", len(posts))
+
+			sort.Slice(posts, func(i, j int) bool {
+				return posts[i].PostDate.Before(posts[j].PostDate) // reverse sort
+			})
+
 			days = append(days, DayData{
 				Date:  d,
 				Posts: posts,
