@@ -75,6 +75,10 @@ func (post *Post) FrontMatterYAML() string {
 	return fmStr
 }
 
+func (post *Post) GetData() map[string]string {
+	return make(map[string]string, 0)
+}
+
 func NewPost(opts PostOpts) Post {
 	var date = opts.PostDate
 	if date.IsZero() {

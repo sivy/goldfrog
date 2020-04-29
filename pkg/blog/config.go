@@ -35,10 +35,19 @@ type Config struct {
 		Class string `yaml:"class"`
 	} `json:"links" yaml:"links"`
 
-	PostsDir     string `json:"postsdir" yaml:"postsdir"`
+	// directory of post Markdown files
+	PostsDir string `json:"postsdir" yaml:"postsdir"`
+	// directory of data files
+	DataDir string `json:"datadir" yaml:"datadir"`
+	// directory where templates are stored
+	// templates are part of "blog content" and will probably be handled
+	// alongside posts
 	TemplatesDir string `json:"templatesdir" yaml:"templatesdir"`
-	StaticDir    string `json:"staticdir" yaml:"staticdir"`
-	UploadsDir   string `json:"uploadsdir" yaml:"uploadsdir"`
+	// directory where static assets will be found
+	// also part of "blog content"
+	StaticDir string `json:"staticdir" yaml:"staticdir"`
+	// directory for file uploads
+	UploadsDir string `json:"uploadsdir" yaml:"uploadsdir"`
 
 	WebMentionEnabled bool `json:"webmentionenabled" yaml:"webmentionenabled"`
 

@@ -24,6 +24,7 @@ func main() {
 	var configDir string
 	var postsDir string
 	var templatesDir string
+	var dataDir string
 	var staticDir string
 	var uploadsDir string
 	var dbFile string
@@ -49,6 +50,11 @@ func main() {
 	flag.StringVar(
 		&templatesDir, "templates_dir",
 		goldfrogHome+"/templates",
+		"Location of blog templates")
+
+	flag.StringVar(
+		&dataDir, "data_dir",
+		goldfrogHome+"/_data", // Jekyll default
 		"Location of blog templates")
 
 	flag.StringVar(
@@ -93,6 +99,9 @@ func main() {
 	}
 	if config.TemplatesDir == "" && templatesDir != "" {
 		config.TemplatesDir = templatesDir
+	}
+	if config.DataDir == "" && dataDir != "" {
+		config.DataDir = dataDir
 	}
 	if config.StaticDir == "" && staticDir != "" {
 		config.StaticDir = staticDir
