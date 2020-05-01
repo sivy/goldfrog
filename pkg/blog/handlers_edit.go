@@ -39,7 +39,7 @@ func CreateNewPostFunc(
 
 			flash, _ := GetFlash(w, r, "flash")
 
-			err = t.ExecuteTemplate(w, "pagebase", struct {
+			err = t.ExecuteTemplate(w, "base", struct {
 				Config     Config
 				Post       Post
 				FormAction string
