@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -34,7 +35,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
-		posts := GetPosts(db, postOpts)
+		postsResult := GetPosts(db, postOpts)
 
 		user := User{
 			DisplayName: config.Blog.Author.Name,
@@ -46,11 +47,11 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		post := NewPost(PostOpts{})
 
-		for _, p := range posts {
+		for _, p := range postsResult.Posts {
 			p.User = user
 		}
 
-		logger.Debugf("Found %d posts", len(posts))
+		logger.Debugf("Found %d total posts", postsResult.TotalCount)
 
 		t, err := getTemplate(config.TemplatesDir, "index.html")
 
@@ -65,7 +66,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 		flash, _ := GetFlash(w, r, "flash")
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts      []*Post
+			Result     GetPostsResult
 			Post       Post
 			Config     Config
 			IsOwner    bool
@@ -75,7 +76,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 			ShowExpand bool
 			Flash      string
 		}{
-			Posts:      posts,
+			Result:     postsResult,
 			Post:       post,
 			Config:     config,
 			IsOwner:    isOwner,
@@ -99,9 +100,9 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 		logger.Info("Serving index RSS...")
 
 		postOpts := GetPostOpts{Limit: 10}
-		posts := GetPosts(db, postOpts)
+		postsResult := GetPosts(db, postOpts)
 
-		logger.Debugf("Found %d posts", len(posts))
+		logger.Debugf("Found %d total posts", postsResult.TotalCount)
 
 		t, err := getTemplate(config.TemplatesDir, "base/rss.xml")
 
@@ -118,11 +119,11 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 		flash, _ := GetFlash(w, r, "flash")
 
 		err = t.ExecuteTemplate(w, "rss", struct {
-			Posts  []*Post
+			Result GetPostsResult
 			Config Config
 			Flash  string
 		}{
-			Posts:  posts,
+			Result: postsResult,
 			Config: config,
 			Flash:  flash,
 		})
@@ -441,7 +442,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
-		var posts []*Post
+		var postsResult GetPostsResult
 		t, err := getTemplate(config.TemplatesDir, "post_list.html")
 
 		// postOpts := GetPostOpts{Limit: 10}
@@ -453,13 +454,13 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		if term == "" {
 			err = t.ExecuteTemplate(w, "base", struct {
-				Posts   []*Post
+				Result  GetPostsResult
 				Config  Config
 				Title   string
 				IsOwner bool
 				Flash   string
 			}{
-				Posts:   posts,
+				Result:  postsResult,
 				Config:  config,
 				Title:   fmt.Sprintf("Search"),
 				IsOwner: isOwner,
@@ -472,7 +473,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			Body:  term,
 		}
 
-		posts = GetPosts(db, opts)
+		postsResult = GetPosts(db, opts)
 		user := User{
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
@@ -481,10 +482,10 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			IsAdmin:     isOwner,
 		}
 
-		for _, p := range posts {
+		for _, p := range postsResult.Posts {
 			p.User = user
 		}
-		logger.Debugf("found posts: %d", len(posts))
+		logger.Debugf("found %d total posts", postsResult.TotalCount)
 
 		if err != nil {
 			logger.Errorf("Could not parse template: %v", err)
@@ -494,15 +495,16 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		}
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts   []*Post
+			Result  GetPostsResult
 			Config  Config
 			Title   string
 			IsOwner bool
 			Flash   string
 		}{
-			Posts:   posts,
-			Config:  config,
-			Title:   fmt.Sprintf("Posts found for '%s'", term),
+			Result: postsResult,
+			Config: config,
+			Title: fmt.Sprintf(
+				"%d Posts found for '%s'", postsResult.TotalCount, term),
 			IsOwner: isOwner,
 			Flash:   flash,
 		})
@@ -520,10 +522,22 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
-		// postOpts := GetPostOpts{Limit: 10}
+		// handle tags
+		var tags []string
 		tag := chi.URLParam(r, "tag")
 
-		posts := GetTaggedPosts(db, tag)
+		if strings.Contains(tag, ",") {
+			tags = strings.Split(tag, ",")
+		} else {
+			tags = []string{tag}
+		}
+
+		opts := GetPostOpts{
+			Tags: tags,
+		}
+
+		postsResult := GetPosts(db, opts)
+
 		user := User{
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
@@ -532,7 +546,7 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			IsAdmin:     isOwner,
 		}
 
-		for _, p := range posts {
+		for _, p := range postsResult.Posts {
 			p.User = user
 		}
 
@@ -548,15 +562,20 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		flash, _ := GetFlash(w, r, "flash")
 
 		err = t.ExecuteTemplate(w, "base", struct {
-			Posts   []*Post
-			Config  Config
-			Title   string
-			IsOwner bool
-			Flash   string
+			Result    GetPostsResult
+			PostCount int
+			Config    Config
+			Title     string
+			IsOwner   bool
+			Flash     string
 		}{
-			Posts:   posts,
-			Config:  config,
-			Title:   fmt.Sprintf("Posts tagged with '%s'", tag),
+			Result:    postsResult,
+			PostCount: postsResult.TotalCount,
+			Config:    config,
+			Title: fmt.Sprintf(
+				"%d Posts tagged with '%s'", postsResult.TotalCount,
+				strings.Join(tags, ", "),
+			),
 			IsOwner: isOwner,
 			Flash:   flash,
 		})

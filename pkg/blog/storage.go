@@ -3,6 +3,7 @@ package blog
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -22,6 +23,23 @@ type GetPostOpts struct {
 	Limit  int
 }
 
+type GetPostsResult struct {
+	Posts       []*Post
+	TotalCount  int
+	StartOffset int
+	Limit       int
+}
+
+func NewPostsResult(
+	posts []*Post, count int, startOffset int, limit int) GetPostsResult {
+	return GetPostsResult{
+		Posts:       posts,
+		TotalCount:  count,
+		StartOffset: startOffset,
+		Limit:       limit,
+	}
+}
+
 type ArchiveEntry struct {
 	Year       string
 	Month      string
@@ -35,7 +53,7 @@ var dateFmts = [...]string{
 	"2006-01-02 15:04:05",
 }
 
-func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
+func GetPosts(db *sql.DB, opts GetPostOpts) GetPostsResult {
 
 	var whereClauses = make(map[string]string)
 
@@ -45,26 +63,46 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 	if opts.Body != "" {
 		whereClauses["body"] = "%" + opts.Body + "%"
 	}
-
+	var tag string = ""
+	if len(opts.Tags) != 0 {
+		tag = opts.Tags[0] // only support one for now
+	}
 	var whereColumns []string
 	var whereValues []string
 
 	for column, value := range whereClauses {
 		whereColumns = append(whereColumns, column)
-		whereValues = append(whereValues, value)
+		var tags []string
+		if column == "tags" {
+			tags = strings.Split(value, ",")
+			whereValues = append(whereValues, tags...)
+		} else {
+			whereValues = append(whereValues, value)
+		}
 	}
 
 	var posts = make([]*Post, 0)
 
 	sql := "SELECT id, title, slug, postdate, tags, frontmatter, body FROM posts"
+	count_sql := "SELECT count(*) FROM posts"
+
 	if len(whereColumns) > 0 {
-		sql += " WHERE "
+		where_sql := " WHERE "
 		for i, c := range whereColumns {
-			sql += fmt.Sprintf("%s like ?", c)
+			if c == "tags" {
+				placeholders := "?" + strings.Repeat(",?", len(opts.Tags)-1)
+				logger.Infof("tag placeholders: %s", placeholders)
+				where_sql += fmt.Sprintf("%s in %s", tag, c)
+			} else {
+				where_sql += fmt.Sprintf("%s like ?", c)
+			}
+
 			if i+1 < len(whereColumns) {
-				sql += " OR "
+				where_sql += " OR "
 			}
 		}
+		sql += where_sql
+		count_sql += where_sql
 	}
 
 	sql += " ORDER BY datetime(postdate) DESC"
@@ -89,20 +127,35 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 		args = append(args, opts.Offset)
 	}
 
+	logger.Infof("count_sql: %s | %s", count_sql, args)
+	var totalCount int
+	row := db.QueryRow(count_sql, args...)
+	err := row.Scan(&totalCount)
+	if err != nil {
+		logger.Errorf("Could not get post count: %v", err)
+		return GetPostsResult{}
+	}
+
+	logger.Infof("sql: %s | %s", sql, args)
 	rows, err := db.Query(sql, args...)
 
 	if err != nil {
 		logger.Errorf("Could not load posts: %v", err)
-		return posts
+		return GetPostsResult{}
 	}
 	if rows.Err() != nil {
 		logger.Errorf("Could not load posts: %v", err)
-		return posts
+		return GetPostsResult{}
 	}
 
 	posts = rowsToPosts(rows)
 
-	return posts
+	return GetPostsResult{
+		Posts:       posts,
+		TotalCount:  totalCount,
+		StartOffset: opts.Offset,
+		Limit:       opts.Limit,
+	}
 }
 
 func GetTaggedPosts(db *sql.DB, tag string) []*Post {
