@@ -299,6 +299,10 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		posts := GetArchiveDayPosts(db, year, month, dayOrSlug)
 
+		sort.Slice(posts, func(i, j int) bool {
+			return posts[i].PostDate.Before(posts[j].PostDate) // reverse sort
+		})
+
 		user := User{
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
