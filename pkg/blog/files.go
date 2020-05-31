@@ -306,17 +306,6 @@ func GetHashTags(s string) []string {
 	return hashtags
 }
 
-// func linkTags(s string, urlPrefix string) string {
-// 	re := regexp.MustCompile(HASHTAGRE)
-// 	res := re.([]byte(s), -1)
-// 	var hashtags []string
-// 	for _, b := range res {
-// 		hashtags = append(hashtags, strings.ToLower(
-// 			strings.Trim(string(b), "#")))
-// 	}
-// 	return hashtags
-// }
-
 func MakePostSlug(title string) string {
 	bits := strings.Split(title, " ")
 	s := strings.Join(bits, "-")

@@ -1,7 +1,7 @@
 package blog
 
 const (
-	configStr string = `
+	syndicationConfigStr string = `
 twitter:
   userid: foo
   linkformat: "%s/%s"
@@ -14,7 +14,7 @@ mastodon:
 // func TestTootLinker(t *testing.T) {
 // 	var c Config
 
-// 	yaml.Unmarshal([]byte(configStr), &c)
+// 	yaml.Unmarshal([]byte(syndicationConfigStr), &c)
 
 // 	out := string(tootLinker(c, "123"))
 // 	assert.NotNil(t, out)
@@ -24,7 +24,7 @@ mastodon:
 // func TestTweetLinker(t *testing.T) {
 // 	var c Config
 
-// 	yaml.Unmarshal([]byte(configStr), &c)
+// 	yaml.Unmarshal([]byte(syndicationConfigStr), &c)
 
 // 	out := string(tweetLinker(c, "123"))
 // 	assert.NotNil(t, out)

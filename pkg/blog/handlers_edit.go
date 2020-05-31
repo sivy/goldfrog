@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi"
 	"github.com/sivy/goldfrog/pkg/syndication"
 )
@@ -18,6 +20,8 @@ import (
 func CreateNewPostFunc(
 	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
 	logger.Debug("Creating new post form handler")
+
+	author_tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
@@ -115,6 +119,7 @@ func CreateNewPostFunc(
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
 		slug := r.PostFormValue("slug")
+		date := r.PostFormValue("postdate")
 
 		if title == "" {
 			slug = MakeNoteSlug(body)
@@ -133,11 +138,28 @@ func CreateNewPostFunc(
 				-1)
 		}
 
+		var postDate time.Time
+		if date != "" {
+			// the date is provided in the author's timezone
+			postDate, err = dateparse.ParseIn(date, author_tz)
+			if err != nil {
+				logger.Warnf("Could not parse date: %s", date)
+				date = ""
+			}
+			// then convert to UTC for storage
+			postDate = postDate.UTC()
+		}
+		if date == "" {
+			// server is already in UTC
+			postDate = time.Now()
+		}
+
 		post := NewPost(PostOpts{
-			Title: title,
-			Tags:  splitTags(tags),
-			Body:  body,
-			Slug:  slug,
+			Title:    title,
+			Tags:     splitTags(tags),
+			Body:     body,
+			Slug:     slug,
+			PostDate: postDate,
 		})
 
 		logger.Debug(post)
@@ -253,6 +275,9 @@ func CreateNewPostFunc(
 func CreateEditPostFunc(
 	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
 	logger.Debug("Creating edit post handler")
+
+	author_tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method == "GET" {
@@ -278,23 +303,25 @@ func CreateEditPostFunc(
 				flash := fmt.Sprintf("An error occurred: %v", err)
 
 				err = t.ExecuteTemplate(w, "base", struct {
-					Config     Config
-					Post       *Post
-					FormAction string
-					IsOwner    bool
-					TextHeight int
-					ShowSlug   bool
-					ShowExpand bool
-					Flash      string
+					Config             Config
+					Post               *Post
+					PostDateInTimeZone time.Time
+					FormAction         string
+					IsOwner            bool
+					TextHeight         int
+					ShowSlug           bool
+					ShowExpand         bool
+					Flash              string
 				}{
-					Config:     config,
-					Post:       post,
-					FormAction: "/edit",
-					IsOwner:    true,
-					TextHeight: 20,
-					ShowSlug:   true,
-					ShowExpand: false,
-					Flash:      flash,
+					Config:             config,
+					Post:               post,
+					PostDateInTimeZone: post.PostDate.In(author_tz),
+					FormAction:         "/edit",
+					IsOwner:            true,
+					TextHeight:         20,
+					ShowSlug:           true,
+					ShowExpand:         false,
+					Flash:              flash,
 				})
 			}
 			logger.Debugf("Found post %s", post.Title)
@@ -309,23 +336,25 @@ func CreateEditPostFunc(
 			flash, _ := GetFlash(w, r, "flash")
 
 			err = t.ExecuteTemplate(w, "base", struct {
-				Config     Config
-				Post       *Post
-				FormAction string
-				IsOwner    bool
-				TextHeight int
-				ShowSlug   bool
-				ShowExpand bool
-				Flash      string
+				Config             Config
+				Post               *Post
+				PostDateInTimeZone time.Time
+				FormAction         string
+				IsOwner            bool
+				TextHeight         int
+				ShowSlug           bool
+				ShowExpand         bool
+				Flash              string
 			}{
-				Config:     config,
-				Post:       post,
-				FormAction: "/edit",
-				IsOwner:    true,
-				TextHeight: 20,
-				ShowSlug:   true,
-				ShowExpand: false,
-				Flash:      flash,
+				Config:             config,
+				Post:               post,
+				PostDateInTimeZone: post.PostDate.In(author_tz),
+				FormAction:         "/edit",
+				IsOwner:            true,
+				TextHeight:         20,
+				ShowSlug:           true,
+				ShowExpand:         false,
+				Flash:              flash,
 			})
 			return
 		}
@@ -370,6 +399,11 @@ func CreateEditPostFunc(
 		title := r.PostFormValue("title")
 		tags := r.PostFormValue("tags")
 		body := r.PostFormValue("body")
+		date := r.PostFormValue("postdate")
+
+		frontMatterString := r.PostFormValue("meta")
+
+		frontMatterYaml := GetFrontMatter(frontMatterString)
 
 		body = strings.Replace(body, "\r\n", "\n", -1)
 
@@ -383,6 +417,27 @@ func CreateEditPostFunc(
 		post.Title = title
 		post.Tags = splitTags(tags)
 		post.Body = strings.TrimSpace(body)
+		post.FrontMatter = frontMatterYaml
+
+		var postDate time.Time
+		logger.Infof("Edit post posted date: %v", date)
+		if date != "" {
+			// the date is provided in the author's timezone
+			postDate, err = dateparse.ParseIn(date, author_tz)
+			logger.Infof("postDate: %v", postDate)
+			if err != nil {
+				logger.Warnf("Could not parse date: %s", date)
+				date = ""
+			}
+			// then convert to UTC for storage
+			postDate = postDate.UTC()
+			logger.Infof("postDate UTC: %v", postDate)
+		}
+		if date == "" {
+			// server is already in UTC
+			postDate = time.Now()
+		}
+		post.PostDate = postDate
 
 		processedBody := fmt.Sprintf("%s", markDowner(post.Body))
 		post.Tags = updateTags(processedBody, post.Tags)
@@ -429,12 +484,15 @@ func CreateEditPostFunc(
 		postData := syndication.PostData{
 			Title:       updatePost.Title,
 			Slug:        updatePost.Slug,
-			PostDate:    updatePost.PostDate,
 			Tags:        updatePost.Tags,
 			Body:        updatePost.Body,
 			FrontMatter: updatePost.FrontMatter,
 			PermaLink:   config.Blog.Url + updatePost.PermaLink(),
 		}
+		if !postDate.IsZero() {
+			postData.PostDate = postDate
+		}
+
 		syndicationMeta := syndication.Syndicate(synOpts, includeHooks, postData)
 
 		logger.Debugf("new meta after hooks: %v", syndicationMeta)

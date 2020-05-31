@@ -167,8 +167,13 @@ func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 	var p Post
 
 	rows, err := db.Query(`
-		SELECT id, title, slug,
-			postdate, tags, frontmatter,
+		SELECT
+			id,
+			title,
+			slug,
+			postdate,
+			tags,
+			frontmatter,
 			body
 	 	FROM posts
 		WHERE slug = ? LIMIT 1
@@ -229,8 +234,13 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 
 	rows, err := db.Query(`
-		SELECT id, title, slug,
-			postdate, tags, frontmatter,
+		SELECT
+			id,
+			title,
+			slug,
+			postdate,
+			tags,
+			frontmatter,
 			body
 		FROM posts
 		WHERE strftime("%Y", postdate) = ?
@@ -249,11 +259,17 @@ func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 	return posts
 }
 
-func GetArchiveDayPosts(db *sql.DB, year string, month string, day string) []*Post {
+func GetArchiveDayPosts(
+	db *sql.DB, year string, month string, day string) []*Post {
 
 	rows, err := db.Query(`
-		SELECT id, title, slug,
-			postdate, tags, frontmatter,
+		SELECT
+			id,
+			title,
+			slug,
+			postdate,
+			tags,
+			frontmatter,
 			body
 		FROM posts
 		WHERE strftime("%Y", postdate) = ?
@@ -284,13 +300,12 @@ func CreatePost(db *sql.DB, post *Post) error {
 		body
 	) VALUES (
 		?, ?, ?,
-		datetime(),
-		?, ?
+		?, ?, ?
 	)
 	`, post.Slug,
 		post.Title,
 		post.TagString(),
-		// date
+		post.PostDate.Format(time.RFC3339),
 		post.FrontMatterYAML(),
 		post.Body)
 
@@ -309,18 +324,23 @@ func CreatePost(db *sql.DB, post *Post) error {
 func SavePost(db *sql.DB, post *Post) error {
 	logger.Infof("-- Save post: %v", post)
 	logger.Debugf("-- frontmatter: %v", post.FrontMatterYAML())
+	if post.PostDate.IsZero() {
+		post.PostDate = time.Now()
+	}
 
 	_, err := db.Exec(`
 	UPDATE posts SET
 		title=?,
 		tags=?,
 		frontmatter=?,
-		body=?
+		body=?,
+		postdate=?
 	WHERE id=?
 	`, post.Title,
 		post.TagString(),
 		post.FrontMatterYAML(),
 		post.Body,
+		post.PostDate.Format(time.RFC3339),
 		post.ID)
 
 	if err != nil {
@@ -392,6 +412,14 @@ func checkDb(dbFile string) bool {
 func rowsToPosts(rows *sql.Rows) []*Post {
 	var posts []*Post
 
+	// id,
+	// title,
+	// slug,
+	// postdate,
+	// tags,
+	// frontmatter,
+	// body
+
 	for rows.Next() {
 		// fmt.Printf("%v", row)
 		var p Post
@@ -400,7 +428,15 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 		var dateStr string
 		var fmStr string
 
-		err := rows.Scan(&p.ID, &p.Title, &p.Slug, &dateStr, &tags, &fmStr, &body)
+		err := rows.Scan(
+			&p.ID,
+			&p.Title,
+			&p.Slug,
+			&dateStr,
+			&tags,
+			&fmStr,
+			&body,
+		)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -416,7 +452,7 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 		}
 
 		p.Tags = splitTags(tags)
-
+		// logger.Debugf("rowsToPosts frontmatter string: %v", fmStr)
 		p.FrontMatter = GetFrontMatter(fmStr)
 
 		p.Body = body

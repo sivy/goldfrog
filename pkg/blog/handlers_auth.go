@@ -8,6 +8,8 @@ import (
 func CreateSigninPageFunc(
 	config Config, dbFile string) http.HandlerFunc {
 	logger.Debug("Creating signin handler")
+	tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			logger.Infof("Handle post ")
@@ -22,7 +24,7 @@ func CreateSigninPageFunc(
 						Name:    "goldfrog",
 						Value:   hash,
 						Path:    "/",
-						Expires: time.Now().AddDate(1, 0, 0),
+						Expires: time.Now().In(tz).AddDate(1, 0, 0),
 						// Secure: true,
 					})
 				}
@@ -78,12 +80,14 @@ func CreateSigninPageFunc(
 func CreateSignoutPageFunc(
 	config Config, dbFile string) http.HandlerFunc {
 	logger.Debug("Creating signout handler")
+	tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:    "goldfrog",
 			Value:   "",
 			Path:    "/",
-			Expires: time.Now().AddDate(-1, 0, 0),
+			Expires: time.Now().In(tz).AddDate(-1, 0, 0),
 			// Secure: true,
 		})
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)

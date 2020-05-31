@@ -13,6 +13,18 @@ import (
 // const (
 // 	testDb string = "../../tests/data/test.db"
 // )
+var configStr = `
+blog:
+  title: monkinetic.blog
+  subhead: Since 1999, XVI Edition
+  url: "http://monkinetic.blog"
+  author:
+    name: Steve Ivy
+    email: steveivy@gmail.com
+    image: "http://monkinetic.blog/static/images/sivy_avatar_256.png"
+	timezone: "America/Phoenix"
+`
+var CONFIG = LoadConfigStr(configStr)
 
 /*
 Do-nothing file saver
@@ -50,7 +62,7 @@ func TestCreatePostHandlerNote(t *testing.T) {
 	assert.Nil(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := CreateNewPostFunc(Config{}, db, &NullPostsRepo{})
+	handler := CreateNewPostFunc(CONFIG, db, &NullPostsRepo{})
 
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusFound, rr.Code)
