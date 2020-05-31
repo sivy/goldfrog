@@ -331,14 +331,12 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		err = t.ExecuteTemplate(w, "base", struct {
 			Posts   []*Post
-			Post    Post
 			Config  Config
 			IsOwner bool
 			Date    time.Time
 			Flash   string
 		}{
 			Posts:   posts,
-			Post:    NewPost(PostOpts{}),
 			Config:  config,
 			IsOwner: isOwner,
 			Date:    date,

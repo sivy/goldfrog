@@ -44,13 +44,14 @@ func CreateNewPostFunc(
 			flash, _ := GetFlash(w, r, "flash")
 
 			err = t.ExecuteTemplate(w, "base", struct {
-				Config     Config
-				Post       Post
-				FormAction string
-				IsOwner    bool
-				TextHeight int
-				ShowSlug   bool
-				Flash      string
+				Config             Config
+				Post               Post
+				PostDateInTimeZone time.Time
+				FormAction         string
+				IsOwner            bool
+				TextHeight         int
+				ShowSlug           bool
+				Flash              string
 			}{
 				Config: config,
 				Post: NewPost(PostOpts{
@@ -59,11 +60,12 @@ func CreateNewPostFunc(
 					Slug:  slug,
 					Tags:  tags,
 				}),
-				FormAction: "/new",
-				IsOwner:    true,
-				TextHeight: 20,
-				ShowSlug:   true,
-				Flash:      flash,
+				PostDateInTimeZone: time.Now().In(author_tz),
+				FormAction:         "/new",
+				IsOwner:            true,
+				TextHeight:         20,
+				ShowSlug:           true,
+				Flash:              flash,
 			})
 			return
 		}
