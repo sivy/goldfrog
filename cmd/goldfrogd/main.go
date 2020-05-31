@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/sivy/goldfrog/pkg/blog"
-	"github.com/spf13/viper"
 )
 
 var version string // set in linker with ldflags -X main.version=
@@ -86,7 +85,7 @@ func main() {
 
 	logger.Debug("loading config")
 
-	config := loadConfig(configDir)
+	config := blog.LoadConfig(configDir)
 	config.Version = version
 
 	if config.PostsDir == "" && postsDir != "" {
@@ -123,17 +122,6 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
-}
-
-func loadConfig(configPath string) blog.Config {
-	viper.AddConfigPath(configPath)
-	viper.ReadInConfig()
-
-	var config blog.Config
-	viper.Unmarshal(&config)
-
-	logger.Debugf("config: %v", config)
-	return config
 }
 
 func runServer(

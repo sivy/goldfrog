@@ -1,14 +1,21 @@
 package blog
 
+import (
+	"bytes"
+
+	"github.com/spf13/viper"
+)
+
 type Config struct {
 	Version string `json:"version" yaml:"version"`
 	Blog    struct {
 		Title   string `json:"title" yaml:"title"`
 		Subhead string `json:"subhead" yaml:"subhead"`
 		Author  struct {
-			Name  string `json:"name" yaml:"name"`
-			Email string `json:"email" yaml:"email"`
-			Image string `json:"image" yaml:"image"`
+			Name     string `json:"name" yaml:"name"`
+			Email    string `json:"email" yaml:"email"`
+			Image    string `json:"image" yaml:"image"`
+			TimeZone string `json:"timezone" yaml:"timezone"`
 		} `json:"author" yaml:"author"`
 		Url  string            `json:"url" yaml:"url"`
 		Meta map[string]string `json:"meta" yaml:"meta"`
@@ -61,4 +68,26 @@ type Config struct {
 		AccessToken  string `yaml:"accesstoken"`
 		LinkFormat   string `yaml:"linkformat"`
 	} `yaml:"mastodon"`
+}
+
+func LoadConfig(configPath string) Config {
+	viper.AddConfigPath(configPath)
+	viper.ReadInConfig()
+
+	var config Config
+	viper.Unmarshal(&config)
+
+	logger.Debugf("config: %v", config)
+	return config
+}
+
+func LoadConfigStr(configStr string) Config {
+	configBytes := []byte(configStr)
+	viper.ReadConfig(bytes.NewBuffer(configBytes))
+
+	var config Config
+	viper.Unmarshal(&config)
+
+	logger.Debugf("config: %v", config)
+	return config
 }
