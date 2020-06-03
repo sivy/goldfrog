@@ -135,12 +135,12 @@ func (tp *TwitterPoster) HandlePost(postData PostData) map[string]string {
 
 	tweet, _, err := client.Statuses.Update(content, tweetParams)
 
+	var resultData = make(map[string]string)
 	if err != nil {
 		logger.Error(err)
-		return make(map[string]string)
+		return resultData
 	}
 
-	var resultData = make(map[string]string)
 	resultData["twitter_id"] = tweet.IDStr
 
 	url := fmt.Sprintf(

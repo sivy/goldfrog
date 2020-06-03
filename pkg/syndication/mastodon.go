@@ -138,12 +138,14 @@ func (xp *MastodonPoster) HandlePost(postData PostData) map[string]string {
 		}
 	}
 
+	var resultData = make(map[string]string)
+
 	logger.Debugf("Sending Mastodon post..")
 	status, err := c.PostStatus(context.Background(), &toot)
 	if err != nil {
 		logger.Error(err)
+		return resultData
 	}
-	var resultData = make(map[string]string)
 	resultData["mastodon_id"] = string(status.ID)
 	resultData["mastodon_url"] = string(status.URL)
 
