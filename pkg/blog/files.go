@@ -214,7 +214,7 @@ func dedupe(slice []string) []string {
 	for _, t := range slice {
 		tmpMap[t] = noVal{}
 	}
-	for t, _ := range tmpMap {
+	for t := range tmpMap {
 		dedupedValues = append(dedupedValues, t)
 	}
 	return dedupedValues
