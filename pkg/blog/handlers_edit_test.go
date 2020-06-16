@@ -13,33 +13,6 @@ import (
 // const (
 // 	testDb string = "../../tests/data/test.db"
 // )
-var configStr = `
-blog:
-  title: monkinetic.blog
-  subhead: Since 1999, XVI Edition
-  url: "http://monkinetic.blog"
-  author:
-    name: Steve Ivy
-    email: steveivy@gmail.com
-    image: "http://monkinetic.blog/static/images/sivy_avatar_256.png"
-	timezone: "America/Phoenix"
-`
-var CONFIG = LoadConfigStr(configStr)
-
-/*
-Do-nothing file saver
-*/
-type NullPostsRepo struct{}
-
-func (npr *NullPostsRepo) ListPostFiles() []string {
-	return []string{}
-}
-func (npr *NullPostsRepo) SavePostFile(post *Post) error {
-	return nil
-}
-func (npr *NullPostsRepo) DeletePostFile(post *Post) error {
-	return nil
-}
 
 func TestCreatePostHandlerNote(t *testing.T) {
 	// Setup
@@ -62,8 +35,10 @@ func TestCreatePostHandlerNote(t *testing.T) {
 	assert.Nil(t, err)
 
 	rr := httptest.NewRecorder()
-	handler := CreateNewPostFunc(CONFIG, db, &NullPostsRepo{})
+	handler := CreateNewPostFunc(TEST_CONFIG, db, &NullPostsRepo{})
 
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusFound, rr.Code)
 }
+
+// TODO: TestCreatePostHandlerPost
