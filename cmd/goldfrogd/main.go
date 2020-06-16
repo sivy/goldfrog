@@ -180,6 +180,8 @@ func runServer(
 		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile))
 		r.Mount("/signout", blog.CreateSignoutPageFunc(config, dbFile))
 
+		r.Mount("/webmention/{slug}", blog.CreateWebMentionFunc(config, db, &repo))
+
 		blog.FileServer(r, "/static", http.Dir(config.StaticDir))
 		blog.FileServer(r, "/uploads", http.Dir(config.UploadsDir))
 	})
