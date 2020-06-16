@@ -157,6 +157,11 @@ func GetPost(db *sql.DB, postID string) (*Post, error) {
 
 	posts = rowsToPosts(rows)
 
+	if len(posts) == 0 {
+		return nil, fmt.Errorf(
+			"No post found for ID: %s", postID)
+	}
+
 	post := posts[0]
 
 	return post, nil
@@ -187,6 +192,12 @@ func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 
 	var posts = make([]*Post, 1)
 	posts = rowsToPosts(rows)
+
+	if len(posts) == 0 {
+		return nil, fmt.Errorf(
+			"No post found for slug: %s", postSlug)
+	}
+
 	post := posts[0]
 	return post, nil
 }
