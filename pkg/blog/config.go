@@ -86,7 +86,6 @@ func LoadConfig(configPath string) Config {
 	var config Config
 	viper.Unmarshal(&config)
 
-	logger.Debugf("config: %v", config)
 	return config
 }
 
@@ -97,6 +96,5 @@ func LoadConfigStr(configStr string) Config {
 	var config Config
 	viper.Unmarshal(&config)
 
-	logger.Debugf("config: %v", config)
 	return config
 }
