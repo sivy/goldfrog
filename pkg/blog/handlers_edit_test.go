@@ -19,6 +19,8 @@ func TestCreatePostHandlerNote(t *testing.T) {
 	data := "title=foo&slug=foo&body=note #content"
 
 	req, err := http.NewRequest("POST", "/new", strings.NewReader(data))
+	req.Header["Content-Type"] = []string{"application/x-www-form-urlencoded"}
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,9 +35,12 @@ func TestCreatePostHandlerNote(t *testing.T) {
 	db, err := GetDb(testDb)
 	assert.NotNil(t, db)
 	assert.Nil(t, err)
+	dbs := NewMockDBStorage()
+
+	var CONFIG = LoadConfig(testConfigDir)
 
 	rr := httptest.NewRecorder()
-	handler := CreateNewPostFunc(TEST_CONFIG, db, &NullPostsRepo{})
+	handler := CreateNewPostFunc(CONFIG, dbs, &MockPostsRepo{})
 
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusFound, rr.Code)

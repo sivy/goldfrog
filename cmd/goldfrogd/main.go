@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 	"github.com/sivy/goldfrog/pkg/blog"
+	"github.com/sivy/goldfrog/pkg/webmention"
 )
 
 var version string // set in linker with ldflags -X main.version=
@@ -141,6 +142,7 @@ func runServer(
 	if err != nil {
 		logger.Fatalf("Could not get db connection: %v", err)
 	}
+	dbs := blog.NewSqliteStorage(db)
 
 	repo := blog.FilePostsRepo{
 		PostsDirectory: config.PostsDir,
@@ -155,32 +157,34 @@ func runServer(
 		middleware.Recoverer,
 	)
 
-	r.Route("/", func(r chi.Router) {
-		r.Mount("/", blog.CreateIndexFunc(config, db))
-		// redirect for old permalinks
-		r.Mount("/{year}/{month}/{dayOrSlug}", blog.CreateDailyPostsFunc(config, db))
-		r.Mount("/{year}/{month}/{day}/{slug}", blog.CreatePostPageFunc(
-			config, db))
-		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, db))
-		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, db))
-		r.Mount("/tag/{tag}", blog.CreateTagPageFunc(config, db))
-		r.Mount("/feed.xml", blog.CreateRssFunc(config, db))
-		r.Mount("/feed_daily.xml", blog.CreateDailyRssFunc(config, db))
-		r.Mount("/search", blog.CreateSearchPageFunc(config, db))
+	wc := webmention.NewWebMentionClient()
 
-		r.Mount("/new", blog.CreateNewPostFunc(config, db, &repo))
+	r.Route("/", func(r chi.Router) {
+		r.Mount("/", blog.CreateIndexFunc(config, dbs))
+		// redirect for old permalinks
+		r.Mount("/{year}/{month}/{dayOrSlug}", blog.CreateDailyPostsFunc(config, dbs))
+		r.Mount("/{year}/{month}/{day}/{slug}", blog.CreatePostPageFunc(
+			config, dbs))
+		r.Mount("/archive", blog.CreateArchiveYearMonthFunc(config, dbs))
+		r.Mount("/archive/{year}/{month}", blog.CreateArchivePageFunc(config, dbs))
+		r.Mount("/tag/{tag}", blog.CreateTagPageFunc(config, dbs))
+		r.Mount("/feed.xml", blog.CreateRssFunc(config, dbs))
+		r.Mount("/feed_daily.xml", blog.CreateDailyRssFunc(config, dbs))
+		r.Mount("/search", blog.CreateSearchPageFunc(config, dbs))
+
+		r.Mount("/new", blog.CreateNewPostFunc(config, dbs, &repo))
 		r.Mount(
 			"/edit/{postID}",
-			blog.CreateEditPostFunc(config, db, &repo))
+			blog.CreateEditPostFunc(config, dbs, &repo))
 		r.Mount(
 			"/edit",
-			blog.CreateEditPostFunc(config, db, &repo))
-		r.Mount("/delete", blog.CreateDeletePostFunc(config, db, &repo))
+			blog.CreateEditPostFunc(config, dbs, &repo))
+		r.Mount("/delete", blog.CreateDeletePostFunc(config, dbs, &repo))
 
 		r.Mount("/signin", blog.CreateSigninPageFunc(config, dbFile))
 		r.Mount("/signout", blog.CreateSignoutPageFunc(config, dbFile))
 
-		r.Mount("/webmention/{slug}", blog.CreateWebMentionFunc(config, db, &repo))
+		r.Mount("/webmention/{slug}", blog.CreateWebMentionFunc(config, dbs, &repo, wc))
 
 		blog.FileServer(r, "/static", http.Dir(config.StaticDir))
 		blog.FileServer(r, "/uploads", http.Dir(config.UploadsDir))

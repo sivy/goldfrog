@@ -1,0 +1,9 @@
+blog:
+    title: monkinetic.blog
+    subhead: Since 1999, XVI Edition
+    url: "http://monkinetic.blog"
+    author:
+        name: Steve Ivy
+        email: steveivy@gmail.com
+        image: "http://monkinetic.blog/static/images/sivy_avatar_256.png"
+    timezone: "America/Phoenix"

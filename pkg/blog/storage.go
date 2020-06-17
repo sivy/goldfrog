@@ -35,7 +35,24 @@ var dateFmts = [...]string{
 	"2006-01-02 15:04:05",
 }
 
-func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
+type DBStorage interface {
+	GetPosts(opts GetPostOpts) []*Post
+	GetTaggedPosts(tag string) []*Post
+	GetPost(postID string) (*Post, error)
+	GetPostBySlug(postSlug string) (*Post, error)
+	GetArchiveYearMonths() []ArchiveEntry
+	GetArchiveMonthPosts(year string, month string) []*Post
+	GetArchiveDayPosts(year string, month string, day string) []*Post
+	CreatePost(post *Post) error
+	SavePost(post *Post) error
+	DeletePost(postID string) error
+}
+
+type SQLiteStorage struct {
+	db *sql.DB
+}
+
+func (dbs *SQLiteStorage) GetPosts(opts GetPostOpts) []*Post {
 
 	var whereClauses = make(map[string]string)
 
@@ -89,7 +106,7 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 		args = append(args, opts.Offset)
 	}
 
-	rows, err := db.Query(sql, args...)
+	rows, err := dbs.db.Query(sql, args...)
 
 	if err != nil {
 		logger.Errorf("Could not load posts: %v", err)
@@ -105,19 +122,19 @@ func GetPosts(db *sql.DB, opts GetPostOpts) []*Post {
 	return posts
 }
 
-func GetTaggedPosts(db *sql.DB, tag string) []*Post {
+func (dbs *SQLiteStorage) GetTaggedPosts(tag string) []*Post {
 
 	var posts = make([]*Post, 0)
 
 	var count int
-	row := db.QueryRow("SELECT count(*) FROM posts WHERE tags like '%?%'")
+	row := dbs.db.QueryRow("SELECT count(*) FROM posts WHERE tags like '%?%'")
 	err := row.Scan(&count)
 
 	if err != nil {
 		logger.Error(err)
 	}
 
-	rows, err := db.Query(`
+	rows, err := dbs.db.Query(`
 		SELECT id, title, slug,
 			postdate, tags, frontmatter,
 			body
@@ -137,11 +154,11 @@ func GetTaggedPosts(db *sql.DB, tag string) []*Post {
 	return posts
 }
 
-func GetPost(db *sql.DB, postID string) (*Post, error) {
+func (dbs *SQLiteStorage) GetPost(postID string) (*Post, error) {
 
 	var p Post
 
-	rows, err := db.Query(`
+	rows, err := dbs.db.Query(`
 		SELECT id, title, slug,
 			postdate, tags, frontmatter,
 			body
@@ -167,11 +184,11 @@ func GetPost(db *sql.DB, postID string) (*Post, error) {
 	return post, nil
 }
 
-func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
+func (dbs *SQLiteStorage) GetPostBySlug(postSlug string) (*Post, error) {
 
 	var p Post
 
-	rows, err := db.Query(`
+	rows, err := dbs.db.Query(`
 		SELECT
 			id,
 			title,
@@ -202,9 +219,9 @@ func GetPostBySlug(db *sql.DB, postSlug string) (*Post, error) {
 	return post, nil
 }
 
-func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
+func (dbs *SQLiteStorage) GetArchiveYearMonths() []ArchiveEntry {
 
-	rows, err := db.Query(`
+	rows, err := dbs.db.Query(`
 	SELECT
 		STRFTIME('%Y', postdate) as postyear,
 		STRFTIME('%m', postdate) as postmonth,
@@ -242,9 +259,9 @@ func GetArchiveYearMonths(db *sql.DB) []ArchiveEntry {
 	return archiveData
 }
 
-func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
+func (dbs *SQLiteStorage) GetArchiveMonthPosts(year string, month string) []*Post {
 
-	rows, err := db.Query(`
+	rows, err := dbs.db.Query(`
 		SELECT
 			id,
 			title,
@@ -270,10 +287,10 @@ func GetArchiveMonthPosts(db *sql.DB, year string, month string) []*Post {
 	return posts
 }
 
-func GetArchiveDayPosts(
-	db *sql.DB, year string, month string, day string) []*Post {
+func (dbs *SQLiteStorage) GetArchiveDayPosts(
+	year string, month string, day string) []*Post {
 
-	rows, err := db.Query(`
+	rows, err := dbs.db.Query(`
 		SELECT
 			id,
 			title,
@@ -299,9 +316,9 @@ func GetArchiveDayPosts(
 	return posts
 }
 
-func CreatePost(db *sql.DB, post *Post) error {
+func (dbs *SQLiteStorage) CreatePost(post *Post) error {
 	logger.Infof("-- Create new post: %v", post)
-	_, err := db.Exec(`
+	_, err := dbs.db.Exec(`
 	INSERT into posts (
 		slug,
 		title,
@@ -325,21 +342,21 @@ func CreatePost(db *sql.DB, post *Post) error {
 		return err
 	}
 
-	p, _ := GetPostBySlug(db, post.Slug)
+	p, _ := dbs.GetPostBySlug(post.Slug)
 	logger.Debugf("created post: %v", p)
 
 	return nil
 
 }
 
-func SavePost(db *sql.DB, post *Post) error {
+func (dbs *SQLiteStorage) SavePost(post *Post) error {
 	logger.Infof("-- Save post: %v", post)
 	logger.Debugf("-- frontmatter: %v", post.FrontMatterYAML())
 	if post.PostDate.IsZero() {
 		post.PostDate = time.Now()
 	}
 
-	_, err := db.Exec(`
+	_, err := dbs.db.Exec(`
 	UPDATE posts SET
 		title=?,
 		tags=?,
@@ -360,7 +377,7 @@ func SavePost(db *sql.DB, post *Post) error {
 	}
 
 	logger.Debug("saved post, now load for sanity...")
-	p, _ := GetPostBySlug(db, post.Slug)
+	p, _ := dbs.GetPostBySlug(post.Slug)
 
 	logger.Debugf("post: %v", p)
 
@@ -368,9 +385,9 @@ func SavePost(db *sql.DB, post *Post) error {
 
 }
 
-func DeletePost(db *sql.DB, postID string) error {
+func (dbs *SQLiteStorage) DeletePost(postID string) error {
 
-	_, err := db.Exec(`
+	_, err := dbs.db.Exec(`
 	DELETE FROM posts WHERE id=?
 	`, postID)
 
@@ -381,8 +398,6 @@ func DeletePost(db *sql.DB, postID string) error {
 
 	return nil
 }
-
-// func paginatePosts(db *sql.DB, )
 
 func initDb(dbFile string) error {
 	createSql := `
@@ -471,4 +486,10 @@ func rowsToPosts(rows *sql.Rows) []*Post {
 		posts = append(posts, &p)
 	}
 	return posts
+}
+
+func NewSqliteStorage(db *sql.DB) *SQLiteStorage {
+	return &SQLiteStorage{
+		db: db,
+	}
 }

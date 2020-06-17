@@ -1,7 +1,6 @@
 package blog
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -24,7 +23,7 @@ func GetLastNDays(days int) []time.Time {
 }
 
 // CreateIndexFunc
-func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateIndexFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating index handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving index...")
@@ -34,7 +33,7 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		isOwner := checkIsOwner(config, r)
 
-		posts := GetPosts(db, postOpts)
+		posts := dbs.GetPosts(postOpts)
 
 		user := User{
 			DisplayName: config.Blog.Author.Name,
@@ -93,13 +92,13 @@ func CreateIndexFunc(config Config, db *sql.DB) http.HandlerFunc {
 }
 
 // CreateRssFunc
-func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateRssFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating rss handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving index RSS...")
 
 		postOpts := GetPostOpts{Limit: 10}
-		posts := GetPosts(db, postOpts)
+		posts := dbs.GetPosts(postOpts)
 
 		logger.Debugf("Found %d posts", len(posts))
 
@@ -134,7 +133,7 @@ func CreateRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 }
 
 // CreateDailyRssFunc
-func CreateDailyRssFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateDailyRssFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating rss handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving daily RSS...")
@@ -150,8 +149,8 @@ func CreateDailyRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 		days := make([]DayData, 0)
 
 		for _, d := range dates {
-			posts := GetArchiveDayPosts(
-				db, fmt.Sprintf("%d", d.Year()),
+			posts := dbs.GetArchiveDayPosts(
+				fmt.Sprintf("%d", d.Year()),
 				fmt.Sprintf("%02d", d.Month()),
 				fmt.Sprintf("%02d", d.Day()))
 
@@ -193,7 +192,7 @@ func CreateDailyRssFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreatePostPageFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating post detail handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving post page...")
@@ -202,7 +201,7 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		postSlug := chi.URLParam(r, "slug")
 
-		post, err := GetPostBySlug(db, postSlug)
+		post, err := dbs.GetPostBySlug(postSlug)
 
 		user := User{
 			DisplayName: config.Blog.Author.Name,
@@ -254,7 +253,7 @@ func CreatePostPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 }
 
 // CreateIndexFunc
-func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateDailyPostsFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating index handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving index...")
@@ -274,7 +273,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 
 		if !isDay {
 			logger.Infof("Redirecting old permalink for %s", dayOrSlug)
-			post, err := GetPostBySlug(db, dayOrSlug)
+			post, err := dbs.GetPostBySlug(dayOrSlug)
 
 			if err != nil {
 				logger.Errorf("Could not get post: %v", err)
@@ -297,7 +296,7 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		posts := GetArchiveDayPosts(db, year, month, dayOrSlug)
+		posts := dbs.GetArchiveDayPosts(year, month, dayOrSlug)
 
 		sort.Slice(posts, func(i, j int) bool {
 			return posts[i].PostDate.Before(posts[j].PostDate) // reverse sort
@@ -349,12 +348,12 @@ func CreateDailyPostsFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateArchiveYearMonthFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateArchiveYearMonthFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating main archive list handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving archive year/month...")
 
-		archiveData := GetArchiveYearMonths(db)
+		archiveData := dbs.GetArchiveYearMonths()
 
 		t, err := getTemplate(config.TemplatesDir, "archive_years.html")
 
@@ -383,7 +382,7 @@ func CreateArchiveYearMonthFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateArchivePageFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating archive page handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving archive year/month...")
@@ -393,7 +392,7 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		year := chi.URLParam(r, "year")
 		month := chi.URLParam(r, "month")
 
-		posts := GetArchiveMonthPosts(db, year, month)
+		posts := dbs.GetArchiveMonthPosts(year, month)
 		user := User{
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
@@ -436,7 +435,7 @@ func CreateArchivePageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateSearchPageFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating search page handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving search results...")
@@ -474,7 +473,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 			Body:  term,
 		}
 
-		posts = GetPosts(db, opts)
+		posts = dbs.GetPosts(opts)
 		user := User{
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,
@@ -515,7 +514,7 @@ func CreateSearchPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
+func CreateTagPageFunc(config Config, dbs DBStorage) http.HandlerFunc {
 	logger.Debug("Creating tag page handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Serving tag search...")
@@ -525,7 +524,7 @@ func CreateTagPageFunc(config Config, db *sql.DB) http.HandlerFunc {
 		// postOpts := GetPostOpts{Limit: 10}
 		tag := chi.URLParam(r, "tag")
 
-		posts := GetTaggedPosts(db, tag)
+		posts := dbs.GetTaggedPosts(tag)
 		user := User{
 			DisplayName: config.Blog.Author.Name,
 			Email:       config.Blog.Author.Email,

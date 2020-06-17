@@ -8,10 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	testDb string = "../../tests/data/test.db"
-)
-
 func TestGetDb(t *testing.T) {
 	db, err := GetDb(testDb)
 	defer func() {
@@ -38,6 +34,7 @@ func TestCreateSavePostPlain(t *testing.T) {
 	defer func() {
 		os.Remove(testDb)
 	}()
+	dbs := NewSqliteStorage(db)
 
 	author_time := time.Now().In(author_tz)
 	utc_time := author_time.UTC()
@@ -54,11 +51,11 @@ func TestCreateSavePostPlain(t *testing.T) {
 	})
 	logger.Infof("p: %v", p)
 
-	err := CreatePost(db, &p)
+	err := dbs.CreatePost(&p)
 	assert.Nil(t, err)
 
 	// Make sure loading the post gets the same information
-	p2, err := GetPostBySlug(db, "the-title")
+	p2, err := dbs.GetPostBySlug("the-title")
 	logger.Infof("p2: %v", p2)
 	assert.Nil(t, err)
 
@@ -80,10 +77,10 @@ func TestCreateSavePostPlain(t *testing.T) {
 	// make a change and save
 	p2.FrontMatter["featured_image"] = "My Uploaded Image.jpg"
 	// Make sure the change persisted
-	err = SavePost(db, p2)
+	err = dbs.SavePost(p2)
 	assert.Nil(t, err)
 
-	p3, err := GetPostBySlug(db, "the-title")
+	p3, err := dbs.GetPostBySlug("the-title")
 	logger.Infof("p3: %v", p3)
 	assert.Equal(t, p2.Title, p3.Title)
 	assert.Equal(t, p2.Slug, p3.Slug)

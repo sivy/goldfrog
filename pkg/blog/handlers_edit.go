@@ -1,7 +1,6 @@
 package blog
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,8 +17,7 @@ import (
 )
 
 func CreateNewPostFunc(
-	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
-	logger.Debug("Creating new post form handler")
+	config Config, dbs DBStorage, repo PostsRepo) http.HandlerFunc {
 
 	author_tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
 
@@ -186,7 +184,7 @@ func CreateNewPostFunc(
 			return
 		}
 
-		err = CreatePost(db, &post)
+		err = dbs.CreatePost(&post)
 		if err != nil {
 			logger.Errorf("Could not create post file: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not save post file: %v", err))
@@ -204,7 +202,7 @@ func CreateNewPostFunc(
 			return
 		}
 
-		updatePost, err := GetPostBySlug(db, post.Slug)
+		updatePost, err := dbs.GetPostBySlug(post.Slug)
 
 		if err != nil {
 			logger.Errorf("Post saved but syndication process could not run: %v", err)
@@ -252,7 +250,7 @@ func CreateNewPostFunc(
 			updatePost.FrontMatter[k] = v
 		}
 
-		err = SavePost(db, updatePost)
+		err = dbs.SavePost(updatePost)
 		if err != nil {
 			logger.Error(err)
 			SetFlash(w, "flash", fmt.Sprintf(
@@ -275,7 +273,7 @@ func CreateNewPostFunc(
 }
 
 func CreateEditPostFunc(
-	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
+	config Config, dbs DBStorage, repo PostsRepo) http.HandlerFunc {
 	logger.Debug("Creating edit post handler")
 
 	author_tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
@@ -298,7 +296,7 @@ func CreateEditPostFunc(
 			}
 			logger.Debug(t)
 
-			post, err := GetPost(db, postID)
+			post, err := dbs.GetPost(postID)
 
 			if err != nil {
 				logger.Error(err)
@@ -363,7 +361,7 @@ func CreateEditPostFunc(
 		logger.Info("Handling Edit Post form")
 
 		postID := r.FormValue("postID")
-		post, err := GetPost(db, postID)
+		post, err := dbs.GetPost(postID)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -451,12 +449,12 @@ func CreateEditPostFunc(
 			logger.Errorf("Could not save post file: %v", err)
 		}
 
-		err = SavePost(db, post)
+		err = dbs.SavePost(post)
 		if err != nil {
 			logger.Errorf("Could not save post: %v", err)
 		}
 
-		updatePost, err := GetPostBySlug(db, post.Slug)
+		updatePost, err := dbs.GetPostBySlug(post.Slug)
 
 		if err != nil {
 			logger.Errorf("Post saved but syndication process could not run: %v", err)
@@ -503,7 +501,7 @@ func CreateEditPostFunc(
 			updatePost.FrontMatter[k] = v
 		}
 
-		err = SavePost(db, updatePost)
+		err = dbs.SavePost(updatePost)
 		if err != nil {
 			logger.Error(err)
 			SetFlash(w, "flash", fmt.Sprintf(
@@ -526,7 +524,7 @@ func CreateEditPostFunc(
 }
 
 func CreateDeletePostFunc(
-	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
+	config Config, dbs DBStorage, repo PostsRepo) http.HandlerFunc {
 	logger.Debug("Creating delete post handler")
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
@@ -536,7 +534,7 @@ func CreateDeletePostFunc(
 		postID := r.PostFormValue("postID")
 		logger.Infof("Delete post: %s", postID)
 
-		post, err := GetPost(db, postID)
+		post, err := dbs.GetPost(postID)
 		if err != nil {
 			logger.Errorf("Could not find post to delete: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not find post to delete: %v", err))
@@ -544,7 +542,7 @@ func CreateDeletePostFunc(
 		}
 		logger.Debugf("post: %s date: %s", post.Title, post.PostDate.Format(POSTTIMESTAMPFMT))
 
-		err = DeletePost(db, postID)
+		err = dbs.DeletePost(postID)
 		if err != nil {
 			logger.Errorf("Could not delete post: %v", err)
 			SetFlash(w, "flash", fmt.Sprintf("Could not delete post: %v", err))
