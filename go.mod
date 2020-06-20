@@ -4,12 +4,13 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/araddon/dateparse v0.0.0-20190622164848-0fb0a474d195
+	github.com/andyleap/microformats v0.0.0-20150523144534-25ae286f528b
+	github.com/araddon/dateparse v0.0.0-20200409225146-d820a6159ab1
 	github.com/dghubble/oauth1 v0.6.0
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/gomarkdown/markdown v0.0.0-20200316172748-fd1f3374857d
-	github.com/jarcoal/httpmock v1.0.5
+	github.com/jarcoal/httpmock v1.0.5 // indirect
 	github.com/leekchan/gtf v0.0.0-20190214083521-5fba33c5b00b
 	github.com/mattn/go-mastodon v0.0.4
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
