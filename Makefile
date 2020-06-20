@@ -1,7 +1,9 @@
+PKG := github.com/sivy/goldfrog
+
 SERVER_OUT := goldfrogd
 INDEXER_OUT := indexer
-PERSISTOR_OUT := persister
-PKG := github.com/sivy/goldfrog
+PERSISTER_OUT := persister
+WM_OUT := wm
 
 VERSION := $(shell git describe --tags --long --always)
 
@@ -20,7 +22,11 @@ indexer:
 
 persister:
 #	go build -i -v -o ${INDEXER_OUT} -ldflags="-X main.version=${VERSION}" ${PKG}
-	go build -v -o ${PERSISTOR_OUT} -ldflags="-X main.version=${VERSION}" cmd/persister/main.go
+	go build -v -o ${PERSISTER_OUT} -ldflags="-X main.version=${VERSION}" cmd/persister/main.go
+
+wm:
+#	go build -i -v -o ${INDEXER_OUT} -ldflags="-X main.version=${VERSION}" ${PKG}
+	go build -v -o ${WM_OUT} -ldflags="-X main.version=${VERSION}" cmd/wm/main.go
 
 test:
 	go test -short ${PKG_LIST}
