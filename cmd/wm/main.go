@@ -1,10 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
+	"net/url"
 
+	"github.com/andyleap/microformats"
 	"github.com/sivy/goldfrog/pkg/webmention"
+	"gopkg.in/yaml.v2"
 )
 
 var version string // set in linker with ldflags -X main.version=
@@ -29,14 +34,41 @@ func sendMention(source string, target string) {
 	client.SendMention(endpoint, source, target)
 }
 
+func findMF(target string, format string) {
+	parser := microformats.New()
+	resp, err := http.Get(target)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	urlparsed, _ := url.Parse(target)
+	data := parser.Parse(resp.Body, urlparsed)
+
+	var marshalled []byte
+
+	if format == "yaml" {
+		marshalled, _ = yaml.Marshal(data)
+	} else if format == "json" {
+		marshalled, _ = json.MarshalIndent(data, "", "  ")
+	}
+
+	fmt.Println(string(marshalled))
+}
+
 func main() {
 
 	var target string
 	var source string
 	var send bool
+	var parseTarget string
+	var parseOutputFormat string
 
 	flag.StringVar(&target, "target", "", "")
 	flag.StringVar(&source, "source", "", "")
+
+	flag.StringVar(&parseTarget, "parse-wm", "", "")
+	flag.StringVar(&parseOutputFormat, "fmt", "", "")
+
 	flag.BoolVar(&send, "send", false, "")
 
 	flag.Parse()
@@ -48,5 +80,9 @@ func main() {
 
 	if send {
 		sendMention(source, target)
+	}
+
+	if parseTarget != "" {
+		findMF(parseTarget, parseOutputFormat)
 	}
 }
