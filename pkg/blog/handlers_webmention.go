@@ -4,7 +4,6 @@
 package blog
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,7 +14,8 @@ import (
 )
 
 func CreateWebMentionFunc(
-	config Config, db *sql.DB, repo PostsRepo) http.HandlerFunc {
+	config Config, dbs DBStorage, repo PostsRepo,
+	wc webmention.WebmentionClient) http.HandlerFunc {
 	logger.Debug("Creating webmention handler")
 
 	//	author_tz, _ := time.LoadLocation(config.Blog.Author.TimeZone)
@@ -24,8 +24,8 @@ func CreateWebMentionFunc(
 
 		logger.Info("Handling webmention")
 
-		sourceUrl := r.PostFormValue("source")
-		target := r.PostFormValue("target")
+		sourceUrl := r.FormValue("source")
+		target := r.FormValue("target")
 
 		/*
 			3.2.1 Request Verification
@@ -38,7 +38,7 @@ func CreateWebMentionFunc(
 				"Webmention source: %s cannot be the same as the target: %s",
 				sourceUrl, target)
 			logger.Error(message)
-			http.Error(w, message, 400)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 
@@ -51,35 +51,38 @@ func CreateWebMentionFunc(
 		*/
 		parsedSource, err := url.ParseRequestURI(sourceUrl)
 		if err != nil {
-			logger.Errorf("Could not parse source: %s, %s", sourceUrl, err)
-			http.Error(w, err.Error(), 400)
+			message := fmt.Sprintf("Could not parse source: %s", sourceUrl)
+			logger.Errorf(message)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 		if !(parsedSource.Scheme == "http") && !(parsedSource.Scheme == "https") {
 			message := "Webmention source must be http(s)"
 			logger.Error(message)
-			http.Error(w, message, 400)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 
 		parsedTarget, err := url.ParseRequestURI(target)
 		if err != nil {
-			logger.Errorf("Could not parse target: %s, %s", target, err)
-			http.Error(w, err.Error(), 400)
+			message := fmt.Sprintf("Could not parse target: %s", target)
+			logger.Errorf(message)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 		if !(parsedTarget.Scheme == "http") && !(parsedTarget.Scheme == "https") {
 			message := "Webmention target must be http(s)"
 			logger.Error(message)
-			http.Error(w, message, 400)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 
+		logger.Warnf("Validate %s in %s", target, config.Blog.Url)
 		if !(strings.Contains(target, config.Blog.Url)) {
 			message := fmt.Sprintf(
 				"Target: %s does not match this site URL: %s", target, config.Blog.Url)
 			logger.Error(message)
-			http.Error(w, message, 400)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 
@@ -93,7 +96,7 @@ func CreateWebMentionFunc(
 			accept Webmentions. This check SHOULD happen synchronously to reject invalid
 			Webmentions before more in-depth verification begins.
 		*/
-		post, err := GetPostBySlug(db, targetSlug)
+		post, err := dbs.GetPostBySlug(targetSlug)
 		if err != nil {
 			logger.Error(err)
 			http.Error(w, err.Error(), 404)
@@ -116,8 +119,7 @@ func CreateWebMentionFunc(
 			redirects (and SHOULD limit the number of redirects it follows) to confirm
 			that it actually mentions the target
 		*/
-		client := webmention.Client{}
-		sourceResp, err := client.Fetch(sourceUrl)
+		sourceResp, err := wc.Fetch(sourceUrl)
 
 		if err != nil {
 			logger.Errorf("Could not load source: %s, %s", sourceUrl, err)
@@ -151,10 +153,11 @@ func CreateWebMentionFunc(
 		if !foundLink {
 			message := fmt.Sprintf("Source: %s does not link to target: %s", sourceUrl, target)
 			logger.Errorf(message)
-			http.Error(w, message, 400)
+			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 
+		logger.Infof("validations passed for webmention from %s", sourceUrl)
 		if _, ok := post.FrontMatter["webmentions"]; ok {
 			//do something here
 		}
@@ -163,7 +166,7 @@ func CreateWebMentionFunc(
 		// 	logger.Errorf("Could not save post file: %v", err)
 		// }
 
-		// err = SavePost(db, post)
+		// err = dbs.SavePost(post)
 		// if err != nil {
 		// 	logger.Errorf("Could not save post: %v", err)
 		// }

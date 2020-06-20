@@ -16,7 +16,7 @@ func TestGetLinkEndpoint(t *testing.T) {
 	<link href="http://aaronpk.example/webmention-endpoint" rel="webmention" />
 	`
 	linkDoc, _ := goquery.NewDocumentFromReader(strings.NewReader(linkHtml))
-	linkEndpoint := client.getHtmlEndpoint(linkDoc, []string{"link"})
+	linkEndpoint := client.GetHtmlEndpoint(linkDoc, []string{"link"})
 
 	assert.Equal(t, linkEndpoint, "http://aaronpk.example/webmention-endpoint")
 }
@@ -29,7 +29,7 @@ func TestGetAnchorEndpoint(t *testing.T) {
 	`
 	aDoc, _ := goquery.NewDocumentFromReader(strings.NewReader(aHtml))
 
-	aEndpoint := client.getHtmlEndpoint(aDoc, []string{"a"})
+	aEndpoint := client.GetHtmlEndpoint(aDoc, []string{"a"})
 
 	assert.Equal(t, aEndpoint, "http://aaronpk.example/webmention-endpoint")
 }

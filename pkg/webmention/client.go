@@ -17,10 +17,24 @@ import (
 var logger = logrus.New()
 
 /*
-Client implements the Webmention protocol and allows the system to
-discover the WebMention endpoint for a link and send webmentions
-to the that endpoint. It also provides functions to parse the links
-from a snippet of html, and to send webmentions for a list of links.
+	Interface for WebmentionClient, defines basic functionality
+	that differet implementations must provide.
+*/
+type WebmentionClient interface {
+	Fetch(url string) (*http.Response, error)
+	EndpointDiscovery(mentionTarget string) (string, error)
+	SendWebMentions(source string, links []string)
+	SendMention(endpoint string, source string, target string)
+	FindLinks(htmlStr string) ([]string, error)
+	GetHtmlEndpoint(doc *goquery.Document, elements []string) string
+}
+
+/*
+Client implements the WebMentionClient interface and Webmention client
+protocol and allows the system to discover the WebMention endpoint for
+a link and send webmentions to the that endpoint. It also provides
+functions to parse the links from a snippet of html, and to send
+webmentions for a list of links.
 */
 type Client struct {
 }
@@ -84,10 +98,10 @@ func (c *Client) EndpointDiscovery(mentionTarget string) (string, error) {
 		<link href="http://aaronpk.example/webmention" rel="webmention">
 	*/
 	if endpointValue == "<none>" {
-		endpointValue = c.getHtmlEndpoint(doc, []string{"link", "a"})
+		endpointValue = c.GetHtmlEndpoint(doc, []string{"link", "a"})
 	}
 
-	// nothing found in getHtmlEndpoint returns "<none>"
+	// nothing found in GetHtmlEndpoint returns "<none>"
 	if endpointValue == "" {
 		// test #15 resolve empty href to the page url
 		return mentionTarget, nil
@@ -128,7 +142,7 @@ func (c *Client) getHeadEndpoint(header http.Header) string {
 	return endpointValue
 }
 
-func (c *Client) getHtmlEndpoint(doc *goquery.Document, elements []string) string {
+func (c *Client) GetHtmlEndpoint(doc *goquery.Document, elements []string) string {
 	var hrefValue = "<none>"
 
 	var selectors []string
@@ -228,6 +242,6 @@ func (c *Client) SendWebMentions(source string, links []string) {
 	}
 }
 
-func NewWebMentionClient() Client {
-	return Client{}
+func NewWebMentionClient() WebmentionClient {
+	return &Client{}
 }
