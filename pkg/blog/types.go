@@ -33,6 +33,7 @@ type Post struct {
 	FrontMatter map[string]string `json:"frontmatter"`
 	Body        string            `json:"body"`
 	User        User              `json:"user"`
+	Data        *PostData
 }
 
 func (post *Post) TagString() string {
@@ -70,7 +71,7 @@ func (post *Post) FrontMatterYAML() string {
 	fm["slug"] = post.Slug
 	fm["date"] = post.PostDate.Format(POSTTIMESTAMPFMT)
 	fm["tags"] = strings.Join(post.Tags, ",")
-	fmBytes, _ := yaml.Marshal(post.FrontMatter)
+	fmBytes, _ := yaml.Marshal(fm)
 	fmStr := string(fmBytes)
 	return fmStr
 }
@@ -98,6 +99,18 @@ func NewPost(opts PostOpts) Post {
 		p.FrontMatter = make(map[string]string)
 	}
 	return p
+}
+
+type PostData struct {
+	Slug     string              `json:"slug" yaml:"slug"`
+	Activity []map[string]string `json:"activity" yaml:"activity"`
+}
+
+func (pd *PostData) ActivityYAML() string {
+	activity := pd.Activity
+	activityBytes, _ := yaml.Marshal(activity)
+	activityStr := string(activityBytes)
+	return activityStr
 }
 
 type User struct {
