@@ -76,8 +76,9 @@ func main() {
 		log.Error(err)
 		return
 	}
+	dbs := blog.NewSqliteStorage(db)
 
-	posts := blog.GetPosts(db, blog.GetPostOpts{
+	posts := dbs.GetPosts(blog.GetPostOpts{
 		Limit: -1,
 	})
 
