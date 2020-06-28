@@ -24,6 +24,8 @@ type PostsRepo interface {
 	ListPostFiles() []string
 	SavePostFile(post *Post) error
 	DeletePostFile(post *Post) error
+	// LoadPostFromFile(slug string) *Post
+	// LoadPostData(post *Post) (*PostData, error)
 }
 
 type FilePostsRepo struct {

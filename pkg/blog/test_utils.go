@@ -1,11 +1,13 @@
 package blog
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/sivy/goldfrog/pkg/webmention"
 )
 
 const (
@@ -66,6 +68,9 @@ func (wc *MockWebmentionClient) SendMention(endpoint string, source string, targ
 }
 func (wc *MockWebmentionClient) GetHtmlEndpoint(doc *goquery.Document, elements []string) string {
 	return wc.mockedEndpoint
+}
+func (wc *MockWebmentionClient) GetMention(targetUrl string, r io.Reader) (webmention.WebMention, error) {
+	return webmention.WebMention{}, nil
 }
 
 type MockDBStorage struct {

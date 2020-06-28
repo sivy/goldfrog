@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -17,54 +16,78 @@ func (wc *MockWebmentionClient) FindLinks(htmlStr string) ([]string, error) {
 	return wc.mockedLinks, nil
 }
 
+type WebMentionTestOpts struct {
+	source       string
+	sourceBody   string
+	target       string
+	responseCode int
+	responseBody string
+}
+
 func TestWebMentionHandler(t *testing.T) {
 	// Setup
-	var params = []map[string]string{
+	var params = []WebMentionTestOpts{
 		// bad source and target the same
 		{
-			"source":       "",
-			"sourceBody":   "",
-			"target":       "",
-			"responseCode": fmt.Sprintf("%d", 400),
-			"responseBody": "Webmention source:  cannot be the same as the target: ",
+			"",
+			"",
+			"",
+			400,
+			"Webmention source:  cannot be the same as the target: ",
 		},
 		{
-			"source":       "http://someblog.com",
-			"sourceBody":   "",
-			"target":       "http://someblog.com",
-			"responseCode": fmt.Sprintf("%d", 400),
-			"responseBody": "Webmention source: http://someblog.com cannot be the same as the target: http://someblog.com",
+			"http://someblog.com",
+			"",
+			"http://someblog.com",
+			400,
+			"Webmention source: http://someblog.com cannot be the same as the target: http://someblog.com",
 		},
 		// unparseable source
 		{
-			"source":       "floop",
-			"sourceBody":   "",
-			"target":       "",
-			"responseCode": fmt.Sprintf("%d", 400),
-			"responseBody": "Could not parse source: floop",
+			"floop",
+			"",
+			"",
+			400,
+			"Could not parse source: floop",
+		},
+		// unparseable scheme
+		{
+			"gopher://example.com",
+			"",
+			"",
+			400,
+			"Webmention source must be http(s), not gopher",
 		},
 		// unparseable target
 		{
-			"source":       "http://someblog.com",
-			"sourceBody":   "",
-			"target":       "floop",
-			"responseCode": fmt.Sprintf("%d", 400),
-			"responseBody": "Could not parse target: floop",
+			"http://someblog.com",
+			"",
+			"floop",
+			400,
+			"Could not parse target: floop",
+		},
+		// unparseable target scheme
+		{
+			"http://someblog.com",
+			"",
+			"gopher://example.com",
+			400,
+			"Webmention target must be http(s), not gopher",
 		},
 		// target wrong domain
 		{
-			"source":       "http://someblog.com",
-			"sourceBody":   "<a href='http://myblog.com'>link</a>",
-			"target":       "http://myblog.com",
-			"responseCode": fmt.Sprintf("%d", 400),
-			"responseBody": "Target: http://myblog.com does not match this site URL: http://monkinetic.blog",
+			"http://someblog.com",
+			`<a href='http://myblog.com'>link</a>`,
+			"http://myblog.com",
+			400,
+			"Target: http://myblog.com does not match this site URL: http://monkinetic.blog",
 		},
 		{
-			"source":       "http://someblog.com",
-			"sourceBody":   "<a href='http://monkinetic.blog/2020/06/20/test'>link</a>",
-			"target":       "http://monkinetic.blog/2020/06/20/test",
-			"responseCode": fmt.Sprintf("%d", 201),
-			"responseBody": "",
+			"http://someblog.com",
+			`<a href="http://example.com">random link</a> <a href='http://monkinetic.blog/2020/06/20/test'>link</a>`,
+			"http://monkinetic.blog/2020/06/20/test",
+			201,
+			"",
 		},
 	}
 
@@ -81,13 +104,12 @@ func TestWebMentionHandler(t *testing.T) {
 	var CONFIG = LoadConfig(testConfigDir)
 	logger.Debugf("config: %v", CONFIG)
 
-	for _, paramSet := range params {
-		source := paramSet["source"]
-		sourceBody := paramSet["sourceBody"]
-		target := paramSet["target"]
-		codeStr := paramSet["responseCode"]
-		code, _ := strconv.ParseInt(codeStr, 10, 32)
-		body := paramSet["responseBody"]
+	for _, opts := range params {
+		source := opts.source
+		sourceBody := opts.sourceBody
+		target := opts.target
+		code := opts.responseCode
+		body := opts.responseBody
 
 		// sourceUrl, target
 		data := fmt.Sprintf(

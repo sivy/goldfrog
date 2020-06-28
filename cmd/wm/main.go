@@ -55,6 +55,15 @@ func findMF(target string, format string) {
 	fmt.Println(string(marshalled))
 }
 
+// func findMention(target string) {
+// 	resp, err := http.Get(target)
+
+// 	client := webmention.NewWebMentionClient()
+// 	mention, err := client.GetMention(target, resp.Body)
+
+// 	fmt.Println(string(marshalled))
+// }
+
 func main() {
 
 	var target string

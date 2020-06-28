@@ -57,7 +57,9 @@ func CreateWebMentionFunc(
 			return
 		}
 		if !(parsedSource.Scheme == "http") && !(parsedSource.Scheme == "https") {
-			message := "Webmention source must be http(s)"
+			message := fmt.Sprintf(
+				"Webmention source must be http(s), not %s",
+				parsedSource.Scheme)
 			logger.Error(message)
 			http.Error(w, message, http.StatusBadRequest)
 			return
@@ -71,7 +73,9 @@ func CreateWebMentionFunc(
 			return
 		}
 		if !(parsedTarget.Scheme == "http") && !(parsedTarget.Scheme == "https") {
-			message := "Webmention target must be http(s)"
+			message := fmt.Sprintf(
+				"Webmention target must be http(s), not %s",
+				parsedTarget.Scheme)
 			logger.Error(message)
 			http.Error(w, message, http.StatusBadRequest)
 			return
@@ -158,9 +162,14 @@ func CreateWebMentionFunc(
 		}
 
 		logger.Infof("validations passed for webmention from %s", sourceUrl)
-		if _, ok := post.FrontMatter["webmentions"]; ok {
-			//do something here
-		}
+
+		/*
+			Now to get the actual h-entry content
+		*/
+
+		// if _, ok := post.FrontMatter["webmentions"]; ok {
+		//do something here
+		// }
 		// err = repo.SavePostFile(post)
 		// if err != nil {
 		// 	logger.Errorf("Could not save post file: %v", err)
@@ -233,6 +242,7 @@ func CreateWebMentionFunc(
 
 		// redirect(w, config.TemplatesDir, post.PermaLink())
 		// http.Redirect(w, r, post.PermaLink(), http.StatusFound)
+		w.WriteHeader(http.StatusCreated)
 		return
 	}
 }

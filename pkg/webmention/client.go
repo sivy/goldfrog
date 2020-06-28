@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,6 +28,7 @@ type WebmentionClient interface {
 	SendMention(endpoint string, source string, target string)
 	FindLinks(htmlStr string) ([]string, error)
 	GetHtmlEndpoint(doc *goquery.Document, elements []string) string
+	GetMention(targetUrl string, r io.Reader) (WebMention, error)
 }
 
 /*

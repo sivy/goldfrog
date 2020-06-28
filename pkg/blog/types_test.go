@@ -78,7 +78,7 @@ func TestPostPermaLink(t *testing.T) {
 			"mastodon_url": "mastodon url",
 		},
 		Body:     "post body",
-		PostData: postdate,
+		PostDate: postdate,
 	})
 	assert.NotNil(t, p)
 	assert.Equal(t, p.PermaLink(), "/2006/01/02/the-title")
